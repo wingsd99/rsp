@@ -1,4 +1,5 @@
 // expressフレームワークを利用
+const express = require('express');
 const app = require('express')();
 const http = require('http').createServer(app);
 // socket.ioライブラリを利用。イベント駆動のリアルタイムな通信を行える
@@ -7,9 +8,7 @@ const io = require('socket.io')(http);
 // 3000番ポートで通信
 const PORT = 3000;
 // ブラウザからのリクエストにindex.htmlを返す
-app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/views/index.html');
-});
+app.use(express.static('./views/'));
 // クライアントがアクセスしたことを検知
 io.on('connection', (socket) => {
   const id = socket.id; // 開発中。各クライアントを識別できる機能を模索中
