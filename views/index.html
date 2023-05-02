@@ -12,12 +12,12 @@
     <p>出す手を選んでください</p>
   </header>
   <div class="container">
-    <button id="rock">グー</button>
-    <button id="scissors">チョキ</button>
-    <button id="paper">パー</button>
-    <div>あなたは<span id="player">???</span>を出しました</div>
-    <div>相手は<span id="enemy">???</span>を出しました</div>
-    <div id="result"></div>
+    <button class="rock">グー</button>
+    <button class="scissors">チョキ</button>
+    <button class="paper">パー</button>
+    <div>あなたは<span class="player">???</span>を出しました</div>
+    <div>相手は<span class="enemy">???</span>を出しました</div>
+    <div class="result"></div>
     <script src="/socket.io/socket.io.js"></script>
     <script>
       // socket.ioモジュールを利用
@@ -31,14 +31,14 @@
       // サーバ側で値保持か、promiseの利用で解決する。Obfuscatorで難読化もできる
       let selectedHand = "";
 
-      // buttonタグのidを取得
-      const rock = document.getElementById("rock");
-      const scissors = document.getElementById("scissors");
-      const paper = document.getElementById("paper");
+      // buttonタグのclassを取得
+      const rock = document.querySelector(".rock");
+      const scissors = document.querySelector(".scissors");
+      const paper = document.querySelector(".paper");
 
       // buttonタグをクリックしたときに行う処理
       rock.addEventListener("click", () => {
-        document.getElementById("player").innerHTML = "グー";
+        document.querySelector(".player").innerHTML = "グー";
         playerHand = hands[0];
         // "playerSelect"イベントを発火し、playerHand(※変数名)をサーバに送る
         socket.emit("playerSelect", playerHand);
@@ -46,14 +46,14 @@
         judge(selectedHand);
       });
       scissors.addEventListener("click", () => {
-        document.getElementById("player").innerHTML = "チョキ";
+        document.querySelector(".player").innerHTML = "チョキ"; 
         playerHand = hands[1];
         socket.emit("playerSelect", playerHand);
         disableButton();
         judge(selectedHand);
       });
       paper.addEventListener("click", () => {
-        document.getElementById("player").innerHTML = "パー";
+        document.querySelector(".player").innerHTML = "パー";
         playerHand = hands[2];
         socket.emit("playerSelect", playerHand);
         disableButton();
@@ -67,8 +67,8 @@
         paper.disabled = true;
       };
       
-      // 「id=result」に勝敗を表示する関数
-      const result = document.getElementById("result");
+      // 「class=result」に勝敗を表示する関数
+      const result = document.querySelector(".result");
       const win = () => result.innerHTML = "あなたの勝ちです";
       const draw = () => result.innerHTML = "引き分けです";
       const lose = () => result.innerHTML = "あなたの負けです";
@@ -85,13 +85,13 @@
 
         // 敵が出した手を表示
         if (enemyHand === hands[0]) {
-          document.getElementById("enemy").innerHTML = "グー";
+          document.querySelector(".enemy").innerHTML = "グー";
         }
         if (enemyHand === hands[1]) {
-          document.getElementById("enemy").innerHTML = "チョキ";
+          document.querySelector(".enemy").innerHTML = "チョキ";
         }
         if (enemyHand === hands[2]) {
-          document.getElementById("enemy").innerHTML = "パー";
+          document.querySelector(".enemy").innerHTML = "パー";
         }
 
         // 勝敗を判定する(※ただし、クライアントは2人を想定)
