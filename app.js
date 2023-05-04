@@ -7,12 +7,12 @@ const io = require('socket.io')(http);
 
 // 3000番ポートで通信
 const PORT = 3000;
-// ブラウザからのリクエストにindex.htmlを返す
+// ブラウザからのリクエストにviews/index.htmlを返す
 app.use(express.static('./views/'));
 // クライアントがアクセスしたことを検知
 io.on('connection', (socket) => {
-  const id = socket.id; // 開発中。各クライアントを識別できる機能を模索中
-  console.log(id); // 開発中
+  const id = socket.id;
+  console.log(id);
   // 'playerSelect'イベントを受信し、playerHand(※変数名)を受け取る
   socket.on('playerSelect', (playerHand) => {
     console.log(playerHand); // 開発中
