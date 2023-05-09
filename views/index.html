@@ -4,117 +4,64 @@
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ジャンケンゲーム</title>
+  <title>rsp-game</title>
 </head>
 <body>
   <header>
-    <h1>ジャンケンゲーム</h1>
-    <p>出す手を選んでください</p>
+    <h1>rsp-game</h1>
+    <p>Please select your hand</p>
   </header>
   <div class="container">
-    <button class="rock">グー</button>
-    <button class="scissors">チョキ</button>
-    <button class="paper">パー</button>
-    <div>あなたは<span class="player">???</span>を出しました</div>
-    <div>相手は<span class="enemy">???</span>を出しました</div>
+    <button class="rock">Rock</button>
+    <button class="scissors">Scissors</button>
+    <button class="paper">Paper</button>
+    <div>You Selected: <span class="player">???</span></div>
+    <div>Enemy Selected: <span class="enemy">???</span></div>
     <div class="result"></div>
     <script src="/socket.io/socket.io.js"></script>
     <script>
-      // socket.ioモジュールを利用
       const socket = io();
       const hands = ["Rock", "Scissors", "Paper"];
-      // 自分が出した手をplayerHand(※変数名)として保存
-      let playerHand = "";
-      // 敵が出した手をselectedHand(※変数名)として保存
-      // 敵が先に手を選んだ場合のみ、この変数を用いる
-      // console.log(selectedHand)で敵の手を取得できるため、ゲームは成り立たない
-      // サーバ側で値保持か、promiseの利用で解決する。Obfuscatorで難読化もできる
-      let selectedHand = "";
 
-      // buttonタグのclassを取得
       const rock = document.querySelector(".rock");
       const scissors = document.querySelector(".scissors");
       const paper = document.querySelector(".paper");
+      const enemy = document.querySelector(".enemy");
+      const result = document.querySelector(".result");
 
-      // buttonタグをクリックしたときに行う処理
       rock.addEventListener("click", () => {
-        document.querySelector(".player").innerHTML = "グー";
-        playerHand = hands[0];
-        // "playerSelect"イベントを発火し、playerHand(※変数名)をサーバに送る
+        document.querySelector(".player").innerHTML = hands[0];
+        const playerHand = hands[0];
+        console.log(playerHand);
         socket.emit("playerSelect", playerHand);
         disableButton();
-        judge(selectedHand);
       });
       scissors.addEventListener("click", () => {
-        document.querySelector(".player").innerHTML = "チョキ"; 
-        playerHand = hands[1];
+        document.querySelector(".player").innerHTML = hands[1]; 
+        const playerHand = hands[1];
         socket.emit("playerSelect", playerHand);
         disableButton();
-        judge(selectedHand);
       });
       paper.addEventListener("click", () => {
-        document.querySelector(".player").innerHTML = "パー";
-        playerHand = hands[2];
+        document.querySelector(".player").innerHTML = hands[2];
+        const playerHand = hands[2];
         socket.emit("playerSelect", playerHand);
         disableButton();
-        judge(selectedHand);
       });
 
-      // ボタン機能を無効化する関数
       const disableButton = () => {
         rock.disabled = true;
         scissors.disabled = true;
         paper.disabled = true;
       };
-      
-      // 「class=result」に勝敗を表示する関数
-      const result = document.querySelector(".result");
-      const win = () => result.innerHTML = "あなたの勝ちです";
-      const draw = () => result.innerHTML = "引き分けです";
-      const lose = () => result.innerHTML = "あなたの負けです";
 
-      // 勝敗を判定する関数
-      const judge = (enemyHand) => {
-        // 手を選択していないならreturnで処理を止める
-        if (playerHand === "") {
-          result.innerHTML = "相手は手を選択しました";
-          // 敵が出した手をselectedHand(※変数名)として保存
-          selectedHand = enemyHand;
-          return;
-        }
+      socket.on("enemySelect", () => {
+        result.innerHTML = "Enemy Selected a hand";
+      });
 
-        // 敵が出した手を表示
-        if (enemyHand === hands[0]) {
-          document.querySelector(".enemy").innerHTML = "グー";
-        }
-        if (enemyHand === hands[1]) {
-          document.querySelector(".enemy").innerHTML = "チョキ";
-        }
-        if (enemyHand === hands[2]) {
-          document.querySelector(".enemy").innerHTML = "パー";
-        }
-
-        // 勝敗を判定する(※ただし、クライアントは2人を想定)
-        if (playerHand === hands[0]) {
-          if (enemyHand === hands[0]) draw();
-          if (enemyHand === hands[1]) win();
-          if (enemyHand === hands[2]) lose();
-        }
-        if (playerHand === hands[1]) {
-          if (enemyHand === hands[0]) lose();
-          if (enemyHand === hands[1]) draw();
-          if (enemyHand === hands[2]) win();
-        }
-        if (playerHand === hands[2]) {
-          if (enemyHand === hands[0]) win();
-          if (enemyHand === hands[1]) lose();
-          if (enemyHand === hands[2]) draw();
-        }
-      };
-
-      // "enemySelect"イベントを受信し、サーバからenemyHand(※変数名)を受け取る
-      socket.on("enemySelect", (enemyHand) => {
-        judge(enemyHand);
+      socket.on("matchResult", (results) => {
+        result.innerHTML = results[0];
+        enemy.innerHTML = results[1];
       });
     </script>
   </div>
