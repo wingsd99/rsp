@@ -11,7 +11,7 @@
     <h1>rsp-game</h1>
   </header>
   <div class="container">
-    <div class="room"></div>
+    <div>Your room: <span class="room"><%= roomNumber %></span></div>
     <p>Please select your hand</p>
     <button class="rock">Rock</button>
     <button class="scissors">Scissors</button>
@@ -26,8 +26,10 @@
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
-    const hands = ["Rock", "Scissors", "Paper"];
 
+    const hands = ["Rock", "Scissors", "Paper"];
+    const room = document.querySelector(".room").innerHTML;
+    
     const rock = document.querySelector(".rock");
     const scissors = document.querySelector(".scissors");
     const paper = document.querySelector(".paper");
@@ -38,19 +40,19 @@
       document.querySelector(".player").innerHTML = hands[0];
       const playerHand = hands[0];
       console.log(playerHand);
-      socket.emit("playerSelect", playerHand);
+      socket.emit("playerSelect", [playerHand, room]);
       disableButton();
     });
     scissors.addEventListener("click", () => {
       document.querySelector(".player").innerHTML = hands[1]; 
       const playerHand = hands[1];
-      socket.emit("playerSelect", playerHand);
+      socket.emit("playerSelect", [playerHand, room]);
       disableButton();
     });
     paper.addEventListener("click", () => {
       document.querySelector(".player").innerHTML = hands[2];
       const playerHand = hands[2];
-      socket.emit("playerSelect", playerHand);
+      socket.emit("playerSelect", [playerHand, room]);
       disableButton();
     });
 
