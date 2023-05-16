@@ -9,61 +9,60 @@
 <body>
   <header>
     <h1>rsp-game</h1>
-    <p>Please select your hand</p>
   </header>
   <div class="container">
+    <p>Please select your hand</p>
     <button class="rock">Rock</button>
     <button class="scissors">Scissors</button>
     <button class="paper">Paper</button>
-    <div>You Selected: <span class="player">???</span></div>
-    <div>Enemy Selected: <span class="enemy">???</span></div>
+    <div>You selected: <span class="player">???</span></div>
+    <div>Enemy selected: <span class="enemy">???</span></div>
     <div class="result"></div>
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-      const socket = io();
-      const hands = ["Rock", "Scissors", "Paper"];
-
-      const rock = document.querySelector(".rock");
-      const scissors = document.querySelector(".scissors");
-      const paper = document.querySelector(".paper");
-      const enemy = document.querySelector(".enemy");
-      const result = document.querySelector(".result");
-
-      rock.addEventListener("click", () => {
-        document.querySelector(".player").innerHTML = hands[0];
-        const playerHand = hands[0];
-        console.log(playerHand);
-        socket.emit("playerSelect", playerHand);
-        disableButton();
-      });
-      scissors.addEventListener("click", () => {
-        document.querySelector(".player").innerHTML = hands[1]; 
-        const playerHand = hands[1];
-        socket.emit("playerSelect", playerHand);
-        disableButton();
-      });
-      paper.addEventListener("click", () => {
-        document.querySelector(".player").innerHTML = hands[2];
-        const playerHand = hands[2];
-        socket.emit("playerSelect", playerHand);
-        disableButton();
-      });
-
-      const disableButton = () => {
-        rock.disabled = true;
-        scissors.disabled = true;
-        paper.disabled = true;
-      };
-
-      socket.on("enemySelect", () => {
-        result.innerHTML = "Enemy Selected a hand";
-      });
-
-      socket.on("matchResult", (results) => {
-        result.innerHTML = results[0];
-        enemy.innerHTML = results[1];
-      });
-    </script>
   </div>
+  <footer>
+    <a href="/">top.html</a>
+  </footer>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const hands = ["Rock", "Scissors", "Paper"];
+
+    const rock = document.querySelector(".rock");
+    const scissors = document.querySelector(".scissors");
+    const paper = document.querySelector(".paper");
+    const enemy = document.querySelector(".enemy");
+    const result = document.querySelector(".result");
+
+    rock.addEventListener("click", () => {
+      document.querySelector(".player").innerHTML = hands[0];
+      const playerHand = hands[0];
+      console.log(playerHand);
+      socket.emit("playerSelect", playerHand);
+      disableButton();
+    });
+    scissors.addEventListener("click", () => {
+      document.querySelector(".player").innerHTML = hands[1]; 
+      const playerHand = hands[1];
+      socket.emit("playerSelect", playerHand);
+      disableButton();
+    });
+    paper.addEventListener("click", () => {
+      document.querySelector(".player").innerHTML = hands[2];
+      const playerHand = hands[2];
+      socket.emit("playerSelect", playerHand);
+      disableButton();
+    });
+
+    const disableButton = () => {
+      rock.disabled = true;
+      scissors.disabled = true;
+      paper.disabled = true;
+    };
+
+    socket.on("matchResult", (results) => {
+      result.innerHTML = results[0];
+      enemy.innerHTML = results[1];
+    });
+  </script>
 </body>
 </html>

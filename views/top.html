@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>rsp-game</title>
+</head>
+<body>
+  <header>
+    <h1>rsp-game</h1>
+  </header>
+  <div class="container">
+    <p>Welcome to my page</p>
+    <p>Select a room</p>
+    <a href="/index/room1" class="room1">room1</a>
+    <a href="/index/room2" class="room2">room2</a>
+    <a href="/index/room3" class="room3">room3</a>
+  </div>
+  <footer>
+    <a href="/index">index.html</a>
+  </footer>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const room1 = document.querySelector(".room1");
+    const room2 = document.querySelector(".room2");
+    const room3 = document.querySelector(".room3");
+
+    // room1.addEventListener("click", ()=> {
+    //   const roomNumber = "room1";
+    //   socket.emit("playerJoin", roomNumber);
+    // });
+    // room1.addEventListener("click", ()=> {
+    //   const roomNumber = "room2";
+    //   socket.emit("playerJoin", roomNumber);
+    // });
+    // room1.addEventListener("click", ()=> {
+    //   const roomNumber = "room3";
+    //   socket.emit("playerJoin", roomNumber);
+    // });
+  </script>
+</body>
+</html>
