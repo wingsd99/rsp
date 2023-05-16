@@ -17,91 +17,133 @@ app.get('/', (req, res) => {
 app.get('/index/:id', (req, res) => {
   const roomNumber = req.params.id;
   // roomNumberを渡すためにejsを導入
-  if (!Room.rooms[req.params.id]) {
-    const room = new Room();
-    Room.rooms[req.params.id] = room;
-  }
   res.render(__dirname + '/views/index.ejs', {roomNumber: roomNumber});
 });
+
+// 配列で作っておいた方が楽
+// room1のuserAのidを指定するなら
+// rooms[0].userA.id
+const rooms = [
+  // room1
+  {
+    userA: {
+      id: '',
+      hand: '',
+      result: '',
+      room: ''
+    },
+    userB: {
+      id: '',
+      hand: '',
+      result: '',
+      room: ''
+    }
+  },
+  // room2
+  {
+    userA: {
+      id: '',
+      hand: '',
+      result: '',
+      room: ''
+    },
+    userB: {
+      id: '',
+      hand: '',
+      result: '',
+      room: ''
+    }
+  },
+  // room3
+  {
+    userA: {
+      id: '',
+      hand: '',
+      result: '',
+      room: ''
+    },
+    userB: {
+      id: '',
+      hand: '',
+      result: '',
+      room: ''
+    }
+  }
+];
 
 io.on('connection', (socket) => {
   const clientsCount = io.engine.clientsCount;
   console.log(clientsCount, socket.id);
-
-  socket.on('join-room', (roomID) => {
-    const player = new User();
-    player.id = socket.id;
-    Room.rooms[roomID].users.push(player);
-    console.info(`Join player into ${roomID}: player.id=${player.id}`);
-    console.info(Room.rooms);
-  });
-
+  
   socket.on('playerSelect', (playerInfo) => {
-    const selectedHand = playerInfo[0];
-    const roomID = playerInfo[1];
-    const playerID = socket.id;
-    const player = Room.rooms[roomID].users.find(
-      (player) => { return player.id == playerID; }
-    );
-    player.hand = selectedHand;
-    console.info(player);
+    const roomX = playerInfo[1] - 1;
+    const createUserA = () => {
+      rooms[roomX].userA.id = socket.id;
+      rooms[roomX].userA.hand = playerInfo[0];
+      rooms[roomX].userA.room = playerInfo[1];
+    };
+    const createUserB = () => {
+      rooms[roomX].userB.id = socket.id;
+      rooms[roomX].userB.hand = playerInfo[0];
+      rooms[roomX].userB.room = playerInfo[1];
+    };
 
     const win = () => {
-      Room.rooms[roomID].userA.result = 'WIN';
-      Room.rooms[roomID].userB.result = 'LOSE';
+      rooms[roomX].userA.result = 'WIN';
+      rooms[roomX].userB.result = 'LOSE';
     };
     const draw = () => {
-      Room.rooms[roomID].userA.result = 'DRAW';
-      Room.rooms[roomID].userB.result = 'DRAW';
+      rooms[roomX].userA.result = 'DRAW';
+      rooms[roomX].userB.result = 'DRAW';
     };
     const lose = () => {
-      Room.rooms[roomID].userA.result = 'LOSE';
-      Room.rooms[roomID].userB.result = 'WIN';
+      rooms[roomX].userA.result = 'LOSE';
+      rooms[roomX].userB.result = 'WIN';
     };
 
     const judgeMatch = () => {
-      if (Room.rooms[roomID].userA.hand === 'Rock') {
-        if (Room.rooms[roomID].userB.hand === 'Rock') draw();
-        if (Room.rooms[roomID].userB.hand === 'Scissors') win();
-        if (Room.rooms[roomID].userB.hand === 'Paper') lose();
+      if (rooms[roomX].userA.hand === 'Rock') {
+        if (rooms[roomX].userB.hand === 'Rock') draw();
+        if (rooms[roomX].userB.hand === 'Scissors') win();
+        if (rooms[roomX].userB.hand === 'Paper') lose();
       }
-      if (Room.rooms[roomID].userA.hand === 'Scissors') {
-        if (Room.rooms[roomID].userB.hand === 'Rock') lose();
-        if (Room.rooms[roomID].userB.hand === 'Scissors') draw();
-        if (Room.rooms[roomID].userB.hand === 'Paper') win();
+      if (rooms[roomX].userA.hand === 'Scissors') {
+        if (rooms[roomX].userB.hand === 'Rock') lose();
+        if (rooms[roomX].userB.hand === 'Scissors') draw();
+        if (rooms[roomX].userB.hand === 'Paper') win();
       }
-      if (Room.rooms[roomID].userA.hand === 'Paper') {
-        if (Room.rooms[roomID].userB.hand === 'Rock') win();
-        if (Room.rooms[roomID].userB.hand === 'Scissors') lose();
-        if (Room.rooms[roomID].userB.hand === 'Paper') draw();
+      if (rooms[roomX].userA.hand === 'Paper') {
+        if (rooms[roomX].userB.hand === 'Rock') win();
+        if (rooms[roomX].userB.hand === 'Scissors') lose();
+        if (rooms[roomX].userB.hand === 'Paper') draw();
       }
-      io.to(Room.rooms[roomID].userA.id).emit('matchResult',
-        [Room.rooms[roomID].userA.result, Room.rooms[roomID].userB.hand]);
-      io.to(Room.rooms[roomID].userB.id).emit('matchResult',
-        [Room.rooms[roomID].userB.result, Room.rooms[roomID].userA.hand]);
+      io.to(rooms[roomX].userA.id).emit('matchResult',
+        [rooms[roomX].userA.result, rooms[roomX].userB.hand]);
+      io.to(rooms[roomX].userB.id).emit('matchResult',
+        [rooms[roomX].userB.result, rooms[roomX].userA.hand]);
     };
 
     const clearUser = () => {
-      Room.rooms[roomID].userA.id = '';
-      Room.rooms[roomID].userA.hand = '';
-      Room.rooms[roomID].userA.result = '';
-      Room.rooms[roomID].userA.room = '';
+      rooms[roomX].userA.id = '';
+      rooms[roomX].userA.hand = '';
+      rooms[roomX].userA.result = '';
+      rooms[roomX].userA.room = '';
       
-      Room.rooms[roomID].userB.id = '';
-      Room.rooms[roomID].userB.hand = '';
-      Room.rooms[roomID].userB.result = '';
-      Room.rooms[roomID].userB.room = '';
+      rooms[roomX].userB.id = '';
+      rooms[roomX].userB.hand = '';
+      rooms[roomX].userB.result = '';
+      rooms[roomX].userB.room = '';
     };
 
-    if (Room.rooms[roomID].userA.id === '') {
+    if (rooms[roomX].userA.id === '') {
       createUserA();
       console.log('userA was created');
     } else {
       createUserB();
       console.log('userB was created');
       judgeMatch();
-      console.log(Room.rooms[roomID].userA);
-      console.log(Room.rooms[roomID].userB);
+      console.log(rooms[roomX].userA);
+      console.log(rooms[roomX].userB);
       clearUser();
       console.log('finish');
     }
@@ -153,18 +195,3 @@ server.listen(PORT, () => {
     //   judgeMatch();
     //   console.log('finish');
     // }
-class Room {
-  static rooms = [];
-  constructor() {
-    this.users = [];
-  }
-}
-
-class User {
-  constructor(room) {
-    this.id = '';
-    this.hand = '';
-    this.result = '';
-    this.room = room;
-  }
-}
