@@ -15,15 +15,11 @@ app.get('/', (req, res) => {
 
 app.get('/index/:id', (req, res) => {
   const roomNumber = req.params.id;
-  // if (userA.room === '') {
-  //   userA.room = roomNumber;
-  //   socket.join(roomNumber);
-  //   socket.emit('yourRoom', roomNumber);
-  // } else {
-  //   userB.room = roomNumber;
-  //   socket.join(roomNumber);
-  //   socket.emit('yourRoom', roomNumber);
-  // }
+  if (userA.room === '') {
+    userA.room = roomNumber;
+  } else {
+    userB.room = roomNumber;
+  }
   res.sendFile(__dirname + '/views/index.html');
 });
 
@@ -43,14 +39,6 @@ const userB = {
 io.on('connection', (socket) => {
   const clientsCount = io.engine.clientsCount;
   console.log(clientsCount, socket.id);
-  // console.log(socket.rooms);
-  // if (req.params.id = 1) {
-  //   socket.join('room1');
-  // } else if (req.params.id = 2) {
-  //   socket.join('room2');
-  // } else if (req.params.id = 3) {
-  //   socket.join('room3');
-  // }
   
   socket.on('playerSelect', (playerHand) => {
     const createUserA = () => {
