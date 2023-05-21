@@ -17,181 +17,133 @@ app.get('/', (req, res) => {
 app.get('/index/:id', (req, res) => {
   const roomNumber = req.params.id;
   // roomNumberを渡すためにejsを導入
-  res.render(__dirname + '/views/index.ejs', {roomNumber: roomNumber});
-});
-
-// 配列で作っておいた方が楽
-// room1のuserAのidを指定するなら
-// rooms[0].userA.id
-const rooms = [
-  // room1
-  {
-    userA: {
-      id: '',
-      hand: '',
-      result: '',
-      room: ''
-    },
-    userB: {
-      id: '',
-      hand: '',
-      result: '',
-      room: ''
-    }
-  },
-  // room2
-  {
-    userA: {
-      id: '',
-      hand: '',
-      result: '',
-      room: ''
-    },
-    userB: {
-      id: '',
-      hand: '',
-      result: '',
-      room: ''
-    }
-  },
-  // room3
-  {
-    userA: {
-      id: '',
-      hand: '',
-      result: '',
-      room: ''
-    },
-    userB: {
-      id: '',
-      hand: '',
-      result: '',
-      room: ''
-    }
+  if (!Room.rooms[req.params.id]) {
+    const room = new Room();
+    Room.rooms[req.params.id] = room;
   }
-];
+  res.render(__dirname + '/views/index.ejs', { roomNumber: roomNumber });
+});
 
 io.on('connection', (socket) => {
-  const clientsCount = io.engine.clientsCount;
-  console.log(clientsCount, socket.id);
-  
-  socket.on('playerSelect', (playerInfo) => {
-    const roomX = playerInfo[1] - 1;
-    const createUserA = () => {
-      rooms[roomX].userA.id = socket.id;
-      rooms[roomX].userA.hand = playerInfo[0];
-      rooms[roomX].userA.room = playerInfo[1];
-    };
-    const createUserB = () => {
-      rooms[roomX].userB.id = socket.id;
-      rooms[roomX].userB.hand = playerInfo[0];
-      rooms[roomX].userB.room = playerInfo[1];
-    };
+  // プレイヤーが部屋に入室した直後
+  socket.on('join-room', (roomID) => {
+    const player = new Player();
+    const room = Room.rooms[roomID];
 
-    const win = () => {
-      rooms[roomX].userA.result = 'WIN';
-      rooms[roomX].userB.result = 'LOSE';
-    };
-    const draw = () => {
-      rooms[roomX].userA.result = 'DRAW';
-      rooms[roomX].userB.result = 'DRAW';
-    };
-    const lose = () => {
-      rooms[roomX].userA.result = 'LOSE';
-      rooms[roomX].userB.result = 'WIN';
-    };
+    // プレイヤーIDをセットし、部屋のプレイヤーリストに登録
+    player.id = socket.id;
+    room.players.push(player);
+    console.info(`Join player into ${roomID}: player.id=${player.id}`);
+    console.info(`Current room status: ${Room.rooms}`);
 
-    const judgeMatch = () => {
-      if (rooms[roomX].userA.hand === 'Rock') {
-        if (rooms[roomX].userB.hand === 'Rock') draw();
-        if (rooms[roomX].userB.hand === 'Scissors') win();
-        if (rooms[roomX].userB.hand === 'Paper') lose();
-      }
-      if (rooms[roomX].userA.hand === 'Scissors') {
-        if (rooms[roomX].userB.hand === 'Rock') lose();
-        if (rooms[roomX].userB.hand === 'Scissors') draw();
-        if (rooms[roomX].userB.hand === 'Paper') win();
-      }
-      if (rooms[roomX].userA.hand === 'Paper') {
-        if (rooms[roomX].userB.hand === 'Rock') win();
-        if (rooms[roomX].userB.hand === 'Scissors') lose();
-        if (rooms[roomX].userB.hand === 'Paper') draw();
-      }
-      io.to(rooms[roomX].userA.id).emit('matchResult',
-        [rooms[roomX].userA.result, rooms[roomX].userB.hand]);
-      io.to(rooms[roomX].userB.id).emit('matchResult',
-        [rooms[roomX].userB.result, rooms[roomX].userA.hand]);
-    };
-
-    const clearUser = () => {
-      rooms[roomX].userA.id = '';
-      rooms[roomX].userA.hand = '';
-      rooms[roomX].userA.result = '';
-      rooms[roomX].userA.room = '';
-      
-      rooms[roomX].userB.id = '';
-      rooms[roomX].userB.hand = '';
-      rooms[roomX].userB.result = '';
-      rooms[roomX].userB.room = '';
-    };
-
-    if (rooms[roomX].userA.id === '') {
-      createUserA();
-      console.log('userA was created');
-    } else {
-      createUserB();
-      console.log('userB was created');
-      judgeMatch();
-      console.log(rooms[roomX].userA);
-      console.log(rooms[roomX].userB);
-      clearUser();
-      console.log('finish');
+    // 現在の部屋状況を入室者全員に伝える
+    let msg = 'Ready for battle!';
+    if (room.players.length == 1) {
+      msg = 'Waiting for other players to join...';
     }
+    console.info(msg);
+    room.players.map(player => io.to(player.id).emit('status', msg));
+  });
+
+  // プレイヤーが落ちたらRoomからプレイヤーを削除
+  socket.on('disconnecting', (_reason) => {
+    Room.rooms.map(room => room.exitPlayer(socket.id));
+  });
+
+  // プレイヤーハンド選択時
+  socket.on('playerSelect', (playerInfo) => {
+    // 部屋とプレイヤーのオブジェクトを取得し、選択された手を当該プレイヤーにセット
+    const selectedHand = playerInfo[0];
+    const room = Room.rooms[playerInfo[1]];
+    const player = room.getPlayer(socket.id);
+    player.hand = selectedHand;
+    console.info(`Player ${player.id} selected hand: ${selectedHand}`);
+
+    // 部屋に一人しかいなければ何もしない
+    if (room.players.length == 1) return;
+
+    // 部屋の全員が手を選んでいなければ未選択のプレイヤー一覧を送信
+    if (!room.checkAllSelected()) {
+      const notSelectedPlayers =
+        room.players.map((tmpPlayer, idx) => (tmpPlayer.hand == '') && idx + 1)
+          .filter(idx => Number.isInteger(idx));
+      room.players.map((tmpPlayer) =>
+        io.to(tmpPlayer.id).emit(
+          'status',
+          `Waiting other player's hand: playerID=${notSelectedPlayers}`
+        ));
+      return;
+    }
+
+    // 全員の手が出揃ったら判定
+    const handsList = (room.getHandsList());
+    room.players.map(tmpPlayer => {
+      console.info(`Player ${tmpPlayer.id}: hand=${tmpPlayer.hand}, result=${tmpPlayer.judgeHand(handsList)}`);
+      const result = {
+        result: tmpPlayer.judgeHand(handsList),
+        playerHands: room.players.map((enemy) => enemy.hand)
+      };
+      io.to(tmpPlayer.id).emit('status', 'Battle finished!');
+      io.to(tmpPlayer.id).emit('matchResult', result);
+    });
+
+    // 判定後は全員の手をリセット
+    room.players.map(tmpPlayer => tmpPlayer.hand = '');
   });
 });
+
+class Room {
+  static rooms = [];
+  constructor() {
+    this.players = [];
+  }
+
+  getPlayer(playerID) {
+    return this.players.find(
+      (player) => player.id == playerID
+    );
+  }
+
+  exitPlayer(playerID) {
+    this.players = this.players.filter(user => user.id != playerID);
+  }
+
+  checkAllSelected() {
+    return this.players.map(player => player.hand)
+      .reduce((prev, cur) => prev && cur, true);
+  }
+
+  getHandsList() {
+    return new Set(this.players.map(player => player.hand));
+  }
+}
+
+class Player {
+  static HAND_PATTERNS = {
+    "Rock": 0,
+    "Scissors": 1,
+    "Paper": 2
+  }
+  static JUDGE_PATTERNS = ["DRAW", "LOSE", "WIN"];
+
+  constructor(room) {
+    this.id = '';
+    this.hand = '';
+    this.room = room;
+  }
+
+  judgeHand(hands) {
+    if (hands.size == 1 || hands.size == 3) return "DRAW";
+
+    const myHand = Player.HAND_PATTERNS[this.hand];
+    const otherHand = Player.HAND_PATTERNS[
+      Array.from(hands).find(hand => this.hand != hand)
+    ];
+    return Player.JUDGE_PATTERNS[(myHand - otherHand + 3) % 3];
+  }
+}
 
 server.listen(PORT, () => {
   console.log(`PORT: ${PORT}`);
 });
 
-    // class UserInfo {
-    //   constructor(id, hand, result) {
-    //     this.id = id;
-    //     this.hand = hand;
-    //     this.result = result;
-    //   }
-    //   get getUser() {
-    //     return this.id;
-    //   }
-    //   get getHand() {
-    //     return this.hand;
-    //   }
-    //   get getResult() {
-    //     return this.result;
-    //   }
-    //   set setResult(result) {
-    //     this.result = result;
-    //   }
-    // };
-    // const createUserA = () => {
-    //   const userA = new UserInfo(socket.id, playerHand);
-    //   return userA;
-    // };
-    // const createUserB = () => {
-    //   const userB = new UserInfo(socket.id, playerHand);
-    //   return userB;
-    // };
-    // const judgeMatch = () => {
-    //   userA.setResult = 'win';
-    //   userB.setResult = 'lose';
-    //   io.emit('matchResult', result);
-    // };
-    // if (typeof userA === 'undefined') {
-    //   createUserA();
-    //   console.log('userA was created');
-    // } else {
-    //   createUserB();
-    //   console.log('userB was created');
-    //   judgeMatch();
-    //   console.log('finish');
-    // }
