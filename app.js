@@ -16,9 +16,11 @@ app.get('/', (req, res) => {
 
 app.get('/index/:id', (req, res) => {
   const roomNumber = req.params.id;
-  // roomNumberを渡すためにejsを導入
+  // Roomクラスにその部屋が存在するかを判定
   if (!Room.rooms[req.params.id]) {
+    // Roomインスタンスを生成
     const room = new Room();
+    // 例: Room.rooms[1]
     Room.rooms[req.params.id] = room;
   }
   res.render(__dirname + '/views/index.ejs', { roomNumber: roomNumber });
@@ -27,17 +29,28 @@ app.get('/index/:id', (req, res) => {
 io.on('connection', (socket) => {
   // プレイヤーが部屋に入室した直後
   socket.on('join-room', (roomID) => {
+    // playerインスタンスを生成
     const player = new Player();
+    // Roomクラスのrooms配列をroom変数で管理
     const room = Room.rooms[roomID];
 
     // プレイヤーIDをセットし、部屋のプレイヤーリストに登録
     player.id = socket.id;
+    // Roomインスタンスのplayers配列に追加
     room.players.push(player);
+    // 入室したユーザの情報を表示
     console.info(`Join player into ${roomID}: player.id=${player.id}`);
+    // Roomクラスに現時点で存在している部屋を表示(?)
+    // Room.roomsのままでは[object Object]が帰ってくる
     console.info(`Current room status: ${Room.rooms}`);
+    // Room.roomsそのものを表示
+    // console.info(`Current room status: ${JSON.stringify(Room.rooms)}`);
+    // roomsの数+1を表示
+    // console.info(`Current room status: ${Room.rooms.length}`);
 
     // 現在の部屋状況を入室者全員に伝える
     let msg = 'Ready for battle!';
+    // playerインスタンスが1つなら待機メッセージ
     if (room.players.length == 1) {
       msg = 'Waiting for other players to join...';
     }
@@ -93,38 +106,47 @@ io.on('connection', (socket) => {
 });
 
 class Room {
+  // インスタンスを生成せずに利用できる
+  // 例: Room.rooms[1]
   static rooms = [];
   constructor() {
     this.players = [];
   }
 
   getPlayer(playerID) {
+    // players配列の中でplayerIDと一致するものを返す
     return this.players.find(
       (player) => player.id == playerID
     );
   }
 
   exitPlayer(playerID) {
+    // playerIDと一致するuser.idを除外する(それ以外を返す)
     this.players = this.players.filter(user => user.id != playerID);
   }
 
   checkAllSelected() {
+    // 新しい配列を生成
+    // player要素のplayer.handを返す
     return this.players.map(player => player.hand)
+      // previousとcurrentが一致するならtrueを返す
+      // 初期値はtrue
       .reduce((prev, cur) => prev && cur, true);
   }
 
   getHandsList() {
+    // player.handの重複を除去した配列風Setオブジェクトを生成
     return new Set(this.players.map(player => player.hand));
   }
 }
 
 class Player {
   static HAND_PATTERNS = {
-    "Rock": 0,
-    "Scissors": 1,
-    "Paper": 2
+    'Rock': 0,
+    'Scissors': 1,
+    'Paper': 2
   }
-  static JUDGE_PATTERNS = ["DRAW", "LOSE", "WIN"];
+  static JUDGE_PATTERNS = ['DRAW', 'LOSE', 'WIN'];
 
   constructor(room) {
     this.id = '';
@@ -133,13 +155,26 @@ class Player {
   }
 
   judgeHand(hands) {
-    if (hands.size == 1 || hands.size == 3) return "DRAW";
+    // 引数handsはplayer.handの配列風Setオブジェクト
+    // 全員の手が同じまたは3種類の手が出た場合は処理終了
+    if (hands.size == 1 || hands.size == 3) return 'DRAW';
 
+    // 2種類の手が出た場合に処理継続
+    // 例: Player.HAND_PATTERNS['rock']ならmyHandは0
     const myHand = Player.HAND_PATTERNS[this.hand];
     const otherHand = Player.HAND_PATTERNS[
+      // handsから新しい配列を生成する
+      // this.handと異なる手を返す
+      // 例: 'scissors'
       Array.from(hands).find(hand => this.hand != hand)
     ];
+    // マイナスを取り除いて0-2の値に揃えた結果を返す
     return Player.JUDGE_PATTERNS[(myHand - otherHand + 3) % 3];
+    // myHand ↓
+    // | | 0| 1| 2|
+    // |0| 0| 1| 2|
+    // |1| 2| 0| 1|
+    // |2| 1| 2| 0|
   }
 }
 
