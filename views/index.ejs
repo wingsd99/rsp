@@ -18,8 +18,8 @@
       <button class="paper">Paper</button>
       <div>Status: <span class="status">???</span></div>
       <div>You selected: <span class="player">???</span></div>
-      <div>Enemy selected: <span class="enemy">???</span></div>
-      <div class="result"></div>
+      <div class="handLists"></div>
+      <div class="yourResult"></div>
     </div>
     <footer>
       <a href="/">top.html</a>
@@ -35,8 +35,8 @@
       const rock = document.querySelector(".rock");
       const scissors = document.querySelector(".scissors");
       const paper = document.querySelector(".paper");
-      const enemy = document.querySelector(".enemy");
-      const result = document.querySelector(".result");
+      const handLists = document.querySelector(".handLists");
+      const yourResult = document.querySelector(".yourResult");
       const status = document.querySelector(".status");
 
       rock.addEventListener("click", () => {
@@ -70,9 +70,13 @@
       });
 
       socket.on("matchResult", (res) => {
-        result.innerHTML = 'result: ' + res.result;
-        enemy.innerHTML = res.playerHands.map((hand, idx) => `Player${idx + 1}'s hand: ${hand}`)
-          .reduce((prev, next) => `${prev}<br />${next}`, '');
+        yourResult.innerHTML = 'yourResult: ' + res.result;
+        // 例: 1番目に入室した人はplayerHands[0]だからPlayer1になる
+        handLists.innerHTML = res.playerHands.map((hand, idx) => `Player${idx + 1}'s hand: ${hand}`)
+          // .reduce((prev, next) => `${prev}<br />${next}`, '');
+          // joinの方が自然な書き方だから、それに書き換える
+          .join("<br />");
+
       });
       //TODO: 再戦可能にする
       //FIXME: ページリロード時の処理
