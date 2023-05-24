@@ -1,0 +1,20 @@
+.rock {
+  background-color: #FF9999;
+}
+
+.scissors {
+  background-color: #FFFF77;
+}
+
+.paper {
+  background-color: #A4C6FF;
+}
+
+.yourResult {
+  color: maroon;
+}
+
+.nextGame {
+  visibility: hidden;
+  background-color: yellowgreen;
+}

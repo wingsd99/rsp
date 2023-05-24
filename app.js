@@ -8,7 +8,6 @@ const PORT = 3000;
 
 app.set('view engine', 'ejs');
 app.use(express.static('./public'));
-// app.use(express.static('./views'));
 
 app.get('/', (req, res) => {
   res.render(__dirname + '/views/top.ejs');
@@ -41,12 +40,13 @@ io.on('connection', (socket) => {
     // 入室したユーザの情報を表示
     console.info(`Join player into ${roomID}: player.id=${player.id}`);
     // roomsの数+1を表示(rooms[0]は空)
-    console.info(`Current room status: ${Room.rooms.length - 1}`);
+    console.info(`Number of rooms: ${Room.rooms.length - 1}`);
 
     // 現在の部屋状況を入室者全員に伝える
+    // ここから下の部分は重複しているため、updateStatus()にするべきかもしれない
     let msg = 'Ready for battle!';
     // playerインスタンスが1つなら待機メッセージ
-    if (room.players.length == 1) {
+    if (room.players.length === 1) {
       msg = 'Waiting for other players to join...';
     }
     console.info(msg);
@@ -71,11 +71,11 @@ io.on('connection', (socket) => {
     const player = room.getPlayer(socket.id);
     // selectedHand定数を宣言せずにplayerInfo[0]でいいかも
     player.hand = playerInfo[0];
-    console.info(`Player ${player.id} selected hand: ${player.hand}`);
+    console.info(`Player ${player.id} selected ${player.hand}`);
 
     // 部屋に一人しかいなければ何もしない
     // このreturnはplayerSelectイベントを抜ける
-    if (room.players.length == 1) return;
+    if (room.players.length === 1) return;
     
     // 部屋の全員が手を選んでいなければ未選択のプレイヤー一覧を送信
     // 入室人数が3人なら手が3つ選択されるまで待機
@@ -84,20 +84,17 @@ io.on('connection', (socket) => {
       // mapメソッドは第1引数に各要素、第2引数にインデックス番号を受け取る
       // tmpPlayerの手が未選択かつ、
       // インデックス番号が次のplayerが存在しない(最後の入室者)
-      room.players.map((tmpPlayer, idx) => (!tmpPlayer.hand) && idx + 1)
+      room.players.map((tmpPlayer, idx) => !tmpPlayer.hand && idx + 1)
         // idxが整数ならtrueを返す(0以下の負の整数と空値もtrue)
         // falseが配列として入ってしまうため、それを除いた配列を返す
         // trueを返したtmpPlayerをnotSelectedPlayersとして扱う
         .filter(idx => Number.isInteger(idx));
-      console.info(room.players.map((tmpPlayer, idx) => (tmpPlayer.hand == '') && idx + 1));
-      // ここのtmpPlayerは上の要素とは別(?)
+      console.info(room.players.map((tmpPlayer, idx) => !tmpPlayer.hand && idx + 1));
       // for文と同じ使い方で部屋にいる全員に送信
       // roomはスコープ内で特定されているから、io.emitだけでいいのでは?
-      room.players.map((tmpPlayer) =>
-        io.to(tmpPlayer.id).emit(
-          'status',
-          `Waiting other player's hand: playerID=${notSelectedPlayers}`
-        ));
+      room.players.map((tmpPlayer) => {
+        io.to(tmpPlayer.id).emit('status', `Waiting other player's hand: playerID=${notSelectedPlayers}`)
+      });
       // このreturnはplayerSelectイベントを抜ける
       return;
     }
@@ -106,9 +103,8 @@ io.on('connection', (socket) => {
     // 重複のない手の一覧を取得
     // 元のコードの外側の括弧は消し忘れだから不要
     const handsList = room.getHandsList();
-    // ここのtmpPlayerは上の要素とは別(?)
     room.players.map(tmpPlayer => {
-      console.info(`Player ${tmpPlayer.id}: hand=${tmpPlayer.hand}, result=${tmpPlayer.judgeHand(handsList)}`);
+      console.info(`Player=${tmpPlayer.id}, hand=${tmpPlayer.hand}, result=${tmpPlayer.judgeHand(handsList)}`);
       const result = {
         result: tmpPlayer.judgeHand(handsList),
         // 全員分の手を送っている(?)
@@ -117,9 +113,21 @@ io.on('connection', (socket) => {
       io.to(tmpPlayer.id).emit('status', 'Battle finished!');
       io.to(tmpPlayer.id).emit('matchResult', result);
     });
-
     // 判定後は全員の手をリセット
     room.players.map(tmpPlayer => tmpPlayer.hand = '');
+  });
+  
+  socket.on('nextGame', (roomID) => {
+    const room = Room.rooms[roomID];
+    // 現在の部屋状況を入室者全員に伝える
+    let msg = 'Ready for battle!';
+    // playerインスタンスが1つなら待機メッセージ
+    if (room.players.length === 1) {
+      msg = 'Waiting for other players to join...';
+    }
+    console.info(msg);
+    // player.idを使ってmsgを送る
+    room.players.map(player => io.to(player.id).emit('status', msg));
   });
 });
 
@@ -187,13 +195,13 @@ class Player {
       // 例: 'scissors'
       Array.from(hands).find(hand => this.hand != hand)
     ];
-    // マイナスを取り除いて0-2の値に揃えた結果を返す
+    // マイナスを取り除いて0から2の値に揃えた結果を返す
     return Player.JUDGE_PATTERNS[(myHand - otherHand + 3) % 3];
     // myHand ↓
-    // | | 0| 1| 2|
-    // |0| 0| 1| 2|
-    // |1| 2| 0| 1|
-    // |2| 1| 2| 0|
+    // | |0|1|2|
+    // |0|0|1|2|
+    // |1|2|0|1|
+    // |2|1|2|0|
   }
 }
 
