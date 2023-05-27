@@ -2,6 +2,7 @@ const express = require('express');
 const app = express();
 const http = require('http');
 const server = http.createServer(app);
+// socket.ioに引数serverを渡す省略記法
 const io = require('socket.io')(server);
 
 const PORT = 3000;
@@ -38,20 +39,20 @@ io.on('connection', (socket) => {
     // Roomインスタンスのplayers配列に追加
     room.players.push(player);
     // 入室したユーザの情報を表示
-    console.info(`Join player into ${roomID}: player.id=${player.id}`);
+    console.log(`Join player into ${roomID}: player.id=${player.id}`);
     // roomsの数+1を表示(rooms[0]は空)
-    console.info(`Number of rooms: ${Room.rooms.length - 1}`);
+    console.log(`Number of rooms: ${Room.rooms.length - 1}`);
 
     // 現在の部屋状況を入室者全員に伝える
-    // ここから下の部分は重複しているため、updateStatus()にするべきかもしれない
+    // ここから下の部分は重複しているため、updateRoomStatus()にするべきかもしれない
     let msg = 'Ready for battle!';
     // playerインスタンスが1つなら待機メッセージ
     if (room.players.length === 1) {
       msg = 'Waiting for other players to join...';
     }
-    console.info(msg);
+    console.log(msg);
     // player.idを使ってmsgを送る
-    room.players.map(player => io.to(player.id).emit('status', msg));
+    room.players.map(player => io.to(player.id).emit('room-status', msg));
   });
 
   // プレイヤーが落ちたらRoomからプレイヤーを削除
@@ -61,26 +62,25 @@ io.on('connection', (socket) => {
   });
 
   // プレイヤーハンド選択時
-  socket.on('playerSelect', (playerInfo) => {
+  socket.on('player-select', (playerInfo) => {
+    // playerInfoは[playerHand, room]
     // 部屋とプレイヤーのオブジェクトを取得する
     // 選択された手を当該プレイヤーにセット
-    // playerInfoは[playerHand, room]
     // 例: ['rock', 1]
     const room = Room.rooms[playerInfo[1]];
     // socket.idと一致するプレイヤーを指定
     const player = room.getPlayer(socket.id);
-    // selectedHand定数を宣言せずにplayerInfo[0]でいいかも
     player.hand = playerInfo[0];
-    console.info(`Player ${player.id} selected ${player.hand}`);
+    console.log(`Player ${player.id} selected ${player.hand}`);
 
     // 部屋に一人しかいなければ何もしない
-    // このreturnはplayerSelectイベントを抜ける
+    // このreturnはplayer-selectイベントを抜ける
     if (room.players.length === 1) return;
     
     // 部屋の全員が手を選んでいなければ未選択のプレイヤー一覧を送信
     // 入室人数が3人なら手が3つ選択されるまで待機
-    if (!room.checkAllSelected()) {
-      const notSelectedPlayers =
+    if (!room.checkAllSelect()) {
+      const playersUnselect =
       // mapメソッドは第1引数に各要素、第2引数にインデックス番号を受け取る
       // tmpPlayerの手が未選択かつ、
       // インデックス番号が次のplayerが存在しない(最後の入室者)
@@ -89,35 +89,33 @@ io.on('connection', (socket) => {
         // falseが配列として入ってしまうため、それを除いた配列を返す
         // trueを返したtmpPlayerをnotSelectedPlayersとして扱う
         .filter(idx => Number.isInteger(idx));
-      console.info(room.players.map((tmpPlayer, idx) => !tmpPlayer.hand && idx + 1));
+      console.log(`Player ${playersUnselect} unselect`);
       // for文と同じ使い方で部屋にいる全員に送信
       // roomはスコープ内で特定されているから、io.emitだけでいいのでは?
       room.players.map((tmpPlayer) => {
-        io.to(tmpPlayer.id).emit('status', `Waiting other player's hand: playerID=${notSelectedPlayers}`)
+        io.to(tmpPlayer.id).emit('room-status', `Waiting other player's hand: playerID=${playersUnselect}`)
       });
-      // このreturnはplayerSelectイベントを抜ける
+      // このreturnはplayer-selectイベントを抜ける
       return;
     }
 
     // 全員の手が出揃ったら判定
     // 重複のない手の一覧を取得
-    // 元のコードの外側の括弧は消し忘れだから不要
     const handsList = room.getHandsList();
     room.players.map(tmpPlayer => {
-      console.info(`Player=${tmpPlayer.id}, hand=${tmpPlayer.hand}, result=${tmpPlayer.judgeHand(handsList)}`);
+      console.log(`Player=${tmpPlayer.id}, hand=${tmpPlayer.hand}, result=${tmpPlayer.judgeHand(handsList)}`);
       const result = {
         result: tmpPlayer.judgeHand(handsList),
-        // 全員分の手を送っている(?)
         playerHands: room.players.map((elm) => elm.hand)
       };
-      io.to(tmpPlayer.id).emit('status', 'Battle finished!');
+      io.to(tmpPlayer.id).emit('room-status', 'Battle finished!');
       io.to(tmpPlayer.id).emit('matchResult', result);
     });
     // 判定後は全員の手をリセット
     room.players.map(tmpPlayer => tmpPlayer.hand = '');
   });
   
-  socket.on('nextGame', (roomID) => {
+  socket.on('next-game', (roomID) => {
     const room = Room.rooms[roomID];
     // 現在の部屋状況を入室者全員に伝える
     let msg = 'Ready for battle!';
@@ -125,9 +123,9 @@ io.on('connection', (socket) => {
     if (room.players.length === 1) {
       msg = 'Waiting for other players to join...';
     }
-    console.info(msg);
+    console.log(msg);
     // player.idを使ってmsgを送る
-    room.players.map(player => io.to(player.id).emit('status', msg));
+    room.players.map(player => io.to(player.id).emit('room-status', msg));
   });
 });
 
@@ -151,13 +149,13 @@ class Room {
     this.players = this.players.filter(user => user.id != playerID);
   }
 
-  checkAllSelected() {
+  checkAllSelect() {
     // 新しい配列を生成
     // player要素のplayer.handを返す
     return this.players.map(player => player.hand)
       // player.handが空文字列でなければcurはtrue
       // 初期値はtrue(最初のprevはtrue)
-      // previousとcurrentが一致するならtrueを返す
+      // previousとcurrentが両方trueならtrueを返す
       .reduce((prev, cur) => prev && cur, true);
   }
 

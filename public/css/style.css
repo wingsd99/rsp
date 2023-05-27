@@ -1,3 +1,17 @@
+/* header */
+
+/* top.ejs / main */
+.image-rsp {
+  margin-top: 50px;
+  margin-bottom: 50px;
+}
+
+/* index.ejs / main */
+button img {
+  width: 30px;
+  height: 30px;
+}
+
 .rock {
   background-color: #FF9999;
 }
@@ -10,11 +24,27 @@
   background-color: #A4C6FF;
 }
 
-.yourResult {
+.your-result {
   color: maroon;
 }
 
-.nextGame {
+.your-result > span {
+  font-size: 20px;
+}
+
+.your-result-image {
+  display: block;
   visibility: hidden;
+  width: 70px;
+  height: 70px;
+}
+
+.next-game {
+  visibility: hidden;
+  margin-top: 5px;
+  margin-bottom: 5px;
+  padding: 3px;
   background-color: yellowgreen;
 }
+
+/* footer */
