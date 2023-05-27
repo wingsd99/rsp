@@ -11,7 +11,33 @@ app.set('view engine', 'ejs');
 app.use(express.static('./public'));
 
 app.get('/', (req, res) => {
-  res.render(__dirname + '/views/top.ejs');
+  // 部屋に入室している人数を表示
+  // const numberOfPlayers = [0];
+  // if (Room.rooms[1]) {
+  //   numberOfPlayers[1] = Room.rooms[1].players.length;
+  // } else {
+  //   numberOfPlayers.push(0);
+  // }
+  // if (Room.rooms[2]) {
+  //   numberOfPlayers[2] = Room.rooms[2].players.length;
+  // } else {
+  //   numberOfPlayers.push(0);
+  // }
+  // if (Room.rooms[3]) {
+  //   numberOfPlayers[3] = Room.rooms[3].players.length;
+  // } else {
+  //   numberOfPlayers.push(0);
+  // }
+
+  let numberOfPlayers = [0, 0, 0];
+  Room.rooms.forEach((room, idx) => {
+    if (room && idx !== 0) {
+      return numberOfPlayers[idx - 1] = room.players.length;
+    } else {
+      return numberOfPlayers[idx - 1] = 0;
+    }
+  });
+  res.render(__dirname + '/views/top.ejs', {numberOfPlayers: numberOfPlayers});
 });
 
 app.get('/index/:id', (req, res) => {
@@ -41,7 +67,7 @@ io.on('connection', (socket) => {
     // 入室したユーザの情報を表示
     console.log(`Join player into ${roomID}: player.id=${player.id}`);
     // roomsの数+1を表示(rooms[0]は空)
-    console.log(`Number of rooms: ${Room.rooms.length - 1}`);
+    console.log(`The number of rooms: ${Room.rooms.length - 1}`);
 
     // 現在の部屋状況を入室者全員に伝える
     // ここから下の部分は重複しているため、updateRoomStatus()にするべきかもしれない
@@ -92,7 +118,7 @@ io.on('connection', (socket) => {
       console.log(`Player ${playersUnselect} unselect`);
       // for文と同じ使い方で部屋にいる全員に送信
       // roomはスコープ内で特定されているから、io.emitだけでいいのでは?
-      room.players.map((tmpPlayer) => {
+      room.players.map(tmpPlayer => {
         io.to(tmpPlayer.id).emit('room-status', `Waiting other player's hand: playerID=${playersUnselect}`)
       });
       // このreturnはplayer-selectイベントを抜ける

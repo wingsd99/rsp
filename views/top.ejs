@@ -14,9 +14,14 @@
   <div class="main">
     <p>Welcome to my page</p>
     <p>Select a room</p>
-    <a href="/index/1" class="room1">room1</a>
-    <a href="/index/2" class="room2">room2</a>
-    <a href="/index/3" class="room3">room3</a>
+    <ul>
+      <% numberOfPlayers.forEach((elm, idx) => { %>
+        <li>
+          <a href="/index/<%= idx + 1 %>" class="room<%= idx + 1 %>">Join room<%= idx + 1 %></a>
+          <div>players: <%= elm %></div>
+        </li>
+      <% }) %>
+    </ul>
     <div class="image-rsp">
       <img src="/image/rsp.png" alt="rsp.png" width="200" height="200" />
     </div>
