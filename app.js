@@ -12,23 +12,6 @@ app.use(express.static('./public'));
 
 app.get('/', (req, res) => {
   // 部屋に入室している人数を表示
-  // const numberOfPlayers = [0];
-  // if (Room.rooms[1]) {
-  //   numberOfPlayers[1] = Room.rooms[1].players.length;
-  // } else {
-  //   numberOfPlayers.push(0);
-  // }
-  // if (Room.rooms[2]) {
-  //   numberOfPlayers[2] = Room.rooms[2].players.length;
-  // } else {
-  //   numberOfPlayers.push(0);
-  // }
-  // if (Room.rooms[3]) {
-  //   numberOfPlayers[3] = Room.rooms[3].players.length;
-  // } else {
-  //   numberOfPlayers.push(0);
-  // }
-
   let numberOfPlayers = [0, 0, 0];
   Room.rooms.forEach((room, idx) => {
     if (room && idx !== 0) {
