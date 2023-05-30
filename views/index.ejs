@@ -12,16 +12,17 @@
       <h1>rsp-game</h1>
     </header>
     <div class="main">
-      <div>Your room: <span class="room"><%= roomNumber %></span></div>
+      <div>Room: <span class="display-room"><%= roomNumber %></span></div>
+      <div>Nickname: <span class="display-nickname"><%= nickname %></span></div>
       <p>Please select your hand</p>
       <div>
-        <button class="rock hand-button" onclick="disableButton();">
+        <button class="rock hand-button">
           <img src="/image/rock.png" alt="rock.png">Rock
         </button>
-        <button class="scissors hand-button" onclick="disableButton();">
+        <button class="scissors hand-button">
           <img src="/image/scissors.png" alt="scissors.png">Scissors
         </button>
-        <button class="paper hand-button" onclick="disableButton();">
+        <button class="paper hand-button">
           <img src="/image/paper.png" alt="paper.png">Paper
         </button>
       </div>
@@ -30,7 +31,7 @@
       <div class="player-hands result-info"></div>
       <div class="your-result result-info"></div>
       <img class="your-result-image" src="" alt="DRAW or LOSE or WIN"/>
-      <button class="next-game" onclick="resetPage();">Next game</button>
+      <button class="next-game">Next game</button>
     </div>
     <footer>
       <a href="/">Back to the title</a>
@@ -39,8 +40,9 @@
     <script>
       const socket = io();
 
-      const room = document.querySelector(".room").innerHTML;
-      socket.emit('join-room', room);
+      const displayRoom = document.querySelector(".display-room").innerHTML;
+      const displayNickname = document.querySelector(".display-nickname").innerHTML;
+      socket.emit('join-room', [displayRoom, displayNickname]);
       
       const HANDS = ["Rock", "Scissors", "Paper"];
 
@@ -50,50 +52,65 @@
       const handButton = document.querySelectorAll(".hand-button");
 
       const roomStatus = document.querySelector(".room-status");
+      const player = document.querySelector(".player");
       const playerHands = document.querySelector(".player-hands");
       const yourResult = document.querySelector(".your-result");
       const resultInfo = document.querySelectorAll(".result-info");
       const yourResultImage = document.querySelector(".your-result-image");
       const nextGame = document.querySelector(".next-game");
 
+      const disableButton = () => handButton.forEach(elm => elm.disabled = true);
+
       rock.addEventListener("click", () => {
-        document.querySelector(".player").innerHTML = `You selected: ${HANDS[0]}`;
-        socket.emit("player-select", [HANDS[0], room]);
+        player.innerHTML = `You selected: ${HANDS[0]}`;
+        socket.emit("player-select", [HANDS[0], displayRoom]);
+        disableButton();
       });
       scissors.addEventListener("click", () => {
-        document.querySelector(".player").innerHTML = `You selected: ${HANDS[1]}`; 
-        socket.emit("player-select", [HANDS[1], room]);
+        player.innerHTML = `You selected: ${HANDS[1]}`; 
+        socket.emit("player-select", [HANDS[1], displayRoom]);
+        disableButton();
       });
       paper.addEventListener("click", () => {
-        document.querySelector(".player").innerHTML = `You selected: ${HANDS[2]}`;
-        socket.emit("player-select", [HANDS[2], room]);
+        player.innerHTML = `You selected: ${HANDS[2]}`;
+        socket.emit("player-select", [HANDS[2], displayRoom]);
+        disableButton();
       });
 
-      const disableButton = () => {
-        handButton.forEach(elm => elm.disabled = true);
-      };
-      
-      const resetPage = () => {
+      nextGame.addEventListener("click", () => {
         handButton.forEach(elm => elm.disabled = false);
+        player.style.visibility = "visible";
         resultInfo.forEach(elm => elm.innerHTML = "");
         yourResultImage.style.visibility = "hidden";
         nextGame.style.visibility = "hidden";
-        socket.emit('next-game', room);
-      };
+        socket.emit('next-game', displayRoom);
+      });
 
       socket.on("room-status", (msg) => {
         roomStatus.innerHTML = msg;
       });
       
       socket.on("matchResult", (res) => {
-        yourResult.innerHTML = `Your result: <span>${res.result}</span>`;
+        yourResult.innerHTML = `Result: <span>${res[0]}</span>`;
         // 例: 1番目に入室した人はplayerHands[0]だからPlayer1になる
-        playerHands.innerHTML = res.playerHands.map((hand, idx) => {
-          return `Player${idx + 1}'s hand: ${hand}`;
+        playerHands.innerHTML = res[1].map((elm) => {
+          return `${elm[0]}'s hand: ${elm[1]}`;
         }).join("<br />");
-        if (res.result === "DRAW") yourResultImage.src = "/image/draw.png";
-        if (res.result === "LOSE") yourResultImage.src = "/image/lose.png";
-        if (res.result === "WIN") yourResultImage.src = "/image/win.png";
+
+        if (res[0] === "DRAW") {
+          yourResultImage.src = "/image/draw.png";
+          yourResultImage.alt = "draw.png";
+        }
+        if (res[0] === "LOSE") {
+          yourResultImage.src = "/image/lose.png";
+          yourResultImage.alt = "lose.png";
+        };
+        if (res[0] === "WIN") {
+          yourResultImage.src = "/image/win.png";
+          yourResultImage.alt = "win.png";
+        }
+
+        player.style.visibility = "hidden";
         yourResultImage.style.visibility = "visible";
         nextGame.style.visibility = "visible";
       });

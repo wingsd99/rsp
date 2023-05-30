@@ -1,6 +1,10 @@
 /* header */
 
 /* top.ejs / main */
+.input-nickname {
+  margin-top: 15px;
+}
+
 .image-rsp {
   margin-top: 50px;
   margin-bottom: 50px;

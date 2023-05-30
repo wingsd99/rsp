@@ -9,6 +9,7 @@ const PORT = 3000;
 
 app.set('view engine', 'ejs');
 app.use(express.static('./public'));
+app.use(express.urlencoded({extended:true}));
 
 app.get('/', (req, res) => {
   // 部屋に入室している人数を表示
@@ -23,32 +24,36 @@ app.get('/', (req, res) => {
   res.render(__dirname + '/views/top.ejs', {numberOfPlayers: numberOfPlayers});
 });
 
-app.get('/index/:id', (req, res) => {
-  const roomNumber = req.params.id;
+app.post('/index', (req, res) => {
+  const roomNumber = req.body.room;
+  const nickname = req.body.nickname;
   // Roomクラスにその部屋が存在するかを判定
-  if (!Room.rooms[req.params.id]) {
+  if (!Room.rooms[roomNumber]) {
     // Roomインスタンスを生成
     const room = new Room();
     // 例: Room.rooms[1]
-    Room.rooms[req.params.id] = room;
+    Room.rooms[roomNumber] = room;
   }
-  res.render(__dirname + '/views/index.ejs', { roomNumber: roomNumber });
+  res.render(__dirname + '/views/index.ejs', {
+    roomNumber: roomNumber,
+    nickname: nickname
+  });
 });
 
 io.on('connection', (socket) => {
   // プレイヤーが部屋に入室した直後
-  socket.on('join-room', (roomID) => {
-    // playerインスタンスを生成
-    const player = new Player();
+  socket.on('join-room', (playerInfo) => {
     // Roomクラスのrooms配列をroom変数で管理
-    const room = Room.rooms[roomID];
+    const room = Room.rooms[playerInfo[0]];
+    // playerインスタンスを生成
+    const player = new Player(playerInfo[1]);
 
     // プレイヤーIDをセットし、部屋のプレイヤーリストに登録
     player.id = socket.id;
-    // Roomインスタンスのplayers配列に追加
+    // rooms配列のplayers配列に追加
     room.players.push(player);
     // 入室したユーザの情報を表示
-    console.log(`Join player into ${roomID}: player.id=${player.id}`);
+    console.log(`Player join room: ${playerInfo[0]}, player.id: ${player.id}, player.nickname: ${player.nickname}`);
     // roomsの数+1を表示(rooms[0]は空)
     console.log(`The number of rooms: ${Room.rooms.length - 1}`);
 
@@ -72,15 +77,14 @@ io.on('connection', (socket) => {
 
   // プレイヤーハンド選択時
   socket.on('player-select', (playerInfo) => {
-    // playerInfoは[playerHand, room]
     // 部屋とプレイヤーのオブジェクトを取得する
-    // 選択された手を当該プレイヤーにセット
     // 例: ['rock', 1]
     const room = Room.rooms[playerInfo[1]];
     // socket.idと一致するプレイヤーを指定
     const player = room.getPlayer(socket.id);
+    // 選択された手を当該プレイヤーにセット
     player.hand = playerInfo[0];
-    console.log(`Player ${player.id} selected ${player.hand}`);
+    console.log(`Player ${player.nickname} selected ${player.hand}`);
 
     // 部屋に一人しかいなければ何もしない
     // このreturnはplayer-selectイベントを抜ける
@@ -89,20 +93,23 @@ io.on('connection', (socket) => {
     // 部屋の全員が手を選んでいなければ未選択のプレイヤー一覧を送信
     // 入室人数が3人なら手が3つ選択されるまで待機
     if (!room.checkAllSelect()) {
-      const playersUnselect =
-      // mapメソッドは第1引数に各要素、第2引数にインデックス番号を受け取る
-      // tmpPlayerの手が未選択かつ、
-      // インデックス番号が次のplayerが存在しない(最後の入室者)
-      room.players.map((tmpPlayer, idx) => !tmpPlayer.hand && idx + 1)
-        // idxが整数ならtrueを返す(0以下の負の整数と空値もtrue)
-        // falseが配列として入ってしまうため、それを除いた配列を返す
-        // trueを返したtmpPlayerをnotSelectedPlayersとして扱う
-        .filter(idx => Number.isInteger(idx));
-      console.log(`Player ${playersUnselect} unselect`);
-      // for文と同じ使い方で部屋にいる全員に送信
-      // roomはスコープ内で特定されているから、io.emitだけでいいのでは?
-      room.players.map(tmpPlayer => {
-        io.to(tmpPlayer.id).emit('room-status', `Waiting other player's hand: playerID=${playersUnselect}`)
+      // let playersUnselect = room.players.map((tmpPlayer, idx) => {
+      // // tmpPlayerの手が選択済みならfalseを返す(右の式は評価されない)
+      // // tmpPlayerの手が未選択(左の式がtrue)ならidx+1の値を返す
+      //   return !tmpPlayer.hand && idx + 1;
+      // // idxが整数ならtrueを返す(0以下の負の整数と空値もtrue)
+      // // falseが配列として入ってしまうため、それを除いた配列を返す
+      // // .filter(Boolean) で同じことを実現できる
+      // }).filter(Boolean);
+      // // .filter(playerUnselect => Number.isInteger(playerUnselect));
+
+      const playerUnselect = room.players.map((tmpPlayer, idx) => {
+        return !tmpPlayer.hand && tmpPlayer.nickname;
+      }).filter(Boolean);
+
+      console.log(`${playerUnselect} unselect a hand`);
+      room.players.forEach(tmpPlayer => {
+        io.to(tmpPlayer.id).emit('room-status', `Waiting other player's hand: player=${playerUnselect}`)
       });
       // このreturnはplayer-selectイベントを抜ける
       return;
@@ -112,11 +119,11 @@ io.on('connection', (socket) => {
     // 重複のない手の一覧を取得
     const handsList = room.getHandsList();
     room.players.map(tmpPlayer => {
-      console.log(`Player=${tmpPlayer.id}, hand=${tmpPlayer.hand}, result=${tmpPlayer.judgeHand(handsList)}`);
-      const result = {
-        result: tmpPlayer.judgeHand(handsList),
-        playerHands: room.players.map((elm) => elm.hand)
-      };
+      console.log(`nickname: ${tmpPlayer.nickname}, hand: ${tmpPlayer.hand}, result: ${tmpPlayer.judgeHand(handsList)}`);
+      const result = [
+        tmpPlayer.judgeHand(handsList),
+        room.players.map(elm => [elm.nickname, elm.hand])
+      ];
       io.to(tmpPlayer.id).emit('room-status', 'Battle finished!');
       io.to(tmpPlayer.id).emit('matchResult', result);
     });
@@ -133,7 +140,7 @@ io.on('connection', (socket) => {
       msg = 'Waiting for other players to join...';
     }
     console.log(msg);
-    // player.idを使ってmsgを送る
+    // 指定はなくても動作するがplayer.idで対象を絞っている
     room.players.map(player => io.to(player.id).emit('room-status', msg));
   });
 });
@@ -148,14 +155,12 @@ class Room {
 
   getPlayer(playerID) {
     // players配列の中でplayerIDと一致するものを返す
-    return this.players.find(
-      (player) => player.id == playerID
-    );
+    return this.players.find(player => player.id == playerID);
   }
 
   exitPlayer(playerID) {
-    // playerIDと一致するuser.idを除外する(それ以外を返す)
-    this.players = this.players.filter(user => user.id != playerID);
+    // playerIDと一致するplayer.idを除外する(それ以外を返す)
+    this.players = this.players.filter(player => player.id != playerID);
   }
 
   checkAllSelect() {
@@ -165,6 +170,7 @@ class Room {
       // player.handが空文字列でなければcurはtrue
       // 初期値はtrue(最初のprevはtrue)
       // previousとcurrentが両方trueならtrueを返す
+      // player.handが1つ以上falseなら最終的にfalseが返される
       .reduce((prev, cur) => prev && cur, true);
   }
 
@@ -182,10 +188,10 @@ class Player {
   }
   static JUDGE_PATTERNS = ['DRAW', 'LOSE', 'WIN'];
 
-  constructor(room) {
+  constructor(nickname) {
     this.id = '';
+    this.nickname = nickname;
     this.hand = '';
-    this.room = room;
   }
 
   judgeHand(hands) {

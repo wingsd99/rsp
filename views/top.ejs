@@ -14,19 +14,37 @@
   <div class="main">
     <p>Welcome to my page</p>
     <p>Select a room</p>
-    <ul>
+    <form action="/index" method="POST">
       <% numberOfPlayers.forEach((elm, idx) => { %>
         <li>
-          <a href="/index/<%= idx + 1 %>" class="room<%= idx + 1 %>">Join room<%= idx + 1 %></a>
-          <div>players: <%= elm %></div>
+          <button type="submit" name="room" value="<%= idx + 1 %>" class="room-button">
+            Join room<%= idx + 1 %>
+          </button>
+          <div>Players: <%= elm %></div>
         </li>
       <% }) %>
-    </ul>
+      <div class="input-nickname">
+        <label>Nickname</label>
+        <input type="text" name="nickname" value="" class="nickname" />
+      </div>
+    </form>
     <div class="image-rsp">
       <img src="/image/rsp.png" alt="rsp.png" width="200" height="200" />
     </div>
   </div>
   <footer>
   </footer>
+  <script>
+    const roomButton = document.querySelectorAll(".room-button");
+    const nickname = document.querySelector(".nickname");
+
+    nickname.addEventListener("input", () => {
+      if (nickname.value) {
+        roomButton.forEach(elm => elm.disabled = false);
+      } else {
+        roomButton.forEach(elm => elm.disabled = true);
+      }
+    });
+  </script>
 </body>
 </html>
