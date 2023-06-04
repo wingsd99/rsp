@@ -4,12 +4,21 @@ const http = require('http');
 const server = http.createServer(app);
 // socket.ioに引数serverを渡す省略記法
 const io = require('socket.io')(server);
+const {body, validationResult} = require('express-validator');
 
 const PORT = 3000;
 
 app.set('view engine', 'ejs');
 app.use(express.static('./public'));
 app.use(express.urlencoded({extended:true}));
+
+const validator = [
+  body('room').isInt().not().isEmpty(),
+  body('nickname').isLength({min: 1, max:8})
+    // 特殊文字を取り除く
+    .blacklist(['<', '>', '&', '\'', '"', '/'])
+    .not().isEmpty()
+];
 
 app.get('/', (req, res) => {
   // 部屋に入室している人数を表示
@@ -24,7 +33,13 @@ app.get('/', (req, res) => {
   res.render(__dirname + '/views/top.ejs', {numberOfPlayers: numberOfPlayers});
 });
 
-app.post('/index', (req, res) => {
+app.post('/index', validator, (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    res.redirect('/');
+    console.log(errors.array());
+    return;
+  }
   const roomNumber = req.body.room;
   const nickname = req.body.nickname;
   // Roomクラスにその部屋が存在するかを判定
@@ -197,6 +212,7 @@ class Player {
   judgeHand(hands) {
     // 引数handsはplayer.handの配列風Setオブジェクト
     // 全員の手が同じまたは3種類の手が出た場合は処理終了
+    // 配列風Setオブジェクトの要素数取得はlengthではなくsizeメソッド
     if (hands.size == 1 || hands.size == 3) return 'DRAW';
 
     // 2種類の手が出た場合に処理継続
@@ -221,4 +237,3 @@ class Player {
 server.listen(PORT, () => {
   console.log(`PORT: ${PORT}`);
 });
-

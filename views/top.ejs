@@ -17,15 +17,23 @@
     <form action="/index" method="POST">
       <% numberOfPlayers.forEach((elm, idx) => { %>
         <li>
-          <button type="submit" name="room" value="<%= idx + 1 %>" class="room-button">
-            Join room<%= idx + 1 %>
+          <button type="submit" name="room" value="<%= idx + 1 %>"
+            class="room-button" disabled>Join room<%= idx + 1 %>
           </button>
           <div>Players: <%= elm %></div>
         </li>
       <% }) %>
       <div class="input-nickname">
         <label>Nickname</label>
-        <input type="text" name="nickname" value="" class="nickname" />
+        <input type="text" name="nickname" value="" maxlength="8" placeholder="8 characters or less" class="nickname" />
+        <p>* Cannot contain these characters: <, >, &, ', " and /</p>
+      </div>
+      <div>
+        <ul>
+          <% if (typeof errors !== "undefined") {%>
+          <li><%= console.log(errors) %></li>
+          <% } %>
+        </ul>
       </div>
     </form>
     <div class="image-rsp">
