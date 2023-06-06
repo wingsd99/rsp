@@ -42,13 +42,23 @@ app.post('/index', validator, (req, res) => {
   }
   const roomNumber = req.body.room;
   const nickname = req.body.nickname;
+  const password = req.body.password;
+
   // Roomクラスにその部屋が存在するかを判定
   if (!Room.rooms[roomNumber]) {
     // Roomインスタンスを生成
     const room = new Room();
     // 例: Room.rooms[1]
     Room.rooms[roomNumber] = room;
+    if (password) {
+      room.password = password;
+    }
+  } else {
+    if (!room.checkPassword(password)) {
+      res.redirect('/');
+    }
   }
+
   res.render(__dirname + '/views/index.ejs', {
     roomNumber: roomNumber,
     nickname: nickname
@@ -86,6 +96,10 @@ io.on('connection', (socket) => {
 
   // プレイヤーが落ちたらRoomからプレイヤーを削除
   socket.on('disconnecting', (_reason) => {
+    let room = Room.getRoomContainsPlayer(socket.id);
+    if (room) {
+      room.deletePassword();
+    }
     // socket.idと一致するプレイヤーを指定して削除
     Room.rooms.map(room => room.exitPlayer(socket.id));
   });
@@ -166,6 +180,7 @@ class Room {
   static rooms = [];
   constructor() {
     this.players = [];
+    this.password;
   }
 
   getPlayer(playerID) {
@@ -192,6 +207,34 @@ class Room {
   getHandsList() {
     // player.handの重複を除去した配列風Setオブジェクトを生成
     return new Set(this.players.map(player => player.hand));
+  }
+
+  static getRoomContainsPlayer(sockId) {
+    return Room.rooms.find((room) => {
+      let player = null;
+      if (room) {
+        player = room.players.find((player) => {
+          if (player.id == sockId) {
+            return player;
+          }
+        });
+        if (player) {
+          return room;
+        }
+      }
+    })
+  }
+    
+  checkPassword(pw) {
+    if (this.password) {
+      return this.password === pw;
+    } else {
+      return true;
+    }
+  }
+
+  deletePassword() {
+    this.password = '';
   }
 }
 
