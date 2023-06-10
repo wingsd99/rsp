@@ -12,32 +12,44 @@
     <h1>rsp-game</h1>
   </header>
   <div class="main">
-    <p>Welcome to my page</p>
-    <p>Select a room</p>
+    <div>Welcome to my page</div>
+    <div>Select a room</div>
     <form action="/index" method="POST">
-      <% numberOfPlayers.forEach((elm, idx) => { %>
-        <li>
-          <button type="submit" name="room" value="<%= idx + 1 %>"
-            class="room-button" disabled>Join room<%= idx + 1 %>
-          </button>
-          <div>Players: <%= elm %></div>
-        </li>
-      <% }) %>
-      <div class="input-nickname">
+      <ul>
+      <!-- numberOfPlayersをroomInfoに変更する -->
+        <% roomInfo.forEach((elm, idx) => { %>
+          <li>
+            <button type="submit" name="room" value="<%= idx + 1 %>"
+              class="room-button" disabled>Join room<%= idx + 1 %>
+            </button>
+            <div class="room-access">
+              <div>Players: <%= elm[0] %> / PW: <%= elm[1] %> </div>
+            </div>
+          </li>
+        <% }) %>
+        <% console.log(roomInfo) %>
+      </ul>
+      <div class="set-nickname">
         <label>Nickname</label>
-        <input type="text" name="nickname" value="" maxlength="8" placeholder="8 characters or less" class="nickname" />
-        <p>* Cannot contain these characters: <, >, &, ', " and /</p>
+        <input type="text" name="nickname" value="" maxlength="8"
+          placeholder="8 characters or less" class="nickname" />
       </div>
       <div class="set-password">
-        <labal>Set password</labal>
-        <!-- ここで任意のpasswordを入力できるようにする -->
+        <!-- <input type="checkbox">
+        チェックボックスがtrueのときのみ入力欄を表示できるようにする
+        PWが必須でないことをわかりやすく示す -->
+        <label>Set password</label>
+        <input type="password" name="password" value="" maxlength="8"
+          placeholder="8 characters or less" class="password" />
+        <p>
+          <div>* Password is optional</div>
+          <div>* Cannot contain these characters: <, >, &, ', " and /</div>
+        </p>
       </div>
       <div>
-        <ul>
-          <% if (typeof errors !== "undefined") {%>
-          <li><%= console.log(errors) %></li>
-          <% } %>
-        </ul>
+        <% if (typeof errors !== "undefined") {%>
+          <div><%= console.log(errors) %></div>
+        <% } %>
       </div>
     </form>
     <div class="image-rsp">

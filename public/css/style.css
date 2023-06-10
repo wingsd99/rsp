@@ -1,7 +1,11 @@
 /* header */
 
 /* top.ejs / main */
-.input-nickname {
+.room-access {
+  display: inline-block;
+}
+
+.set-nickname {
   margin-top: 15px;
 }
 

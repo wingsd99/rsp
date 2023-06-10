@@ -14,23 +14,26 @@ app.use(express.urlencoded({extended:true}));
 
 const validator = [
   body('room').isInt().not().isEmpty(),
-  body('nickname').isLength({min: 1, max:8})
+  body('nickname').isLength({min: 1, max: 8})
     // 特殊文字を取り除く
     .blacklist(['<', '>', '&', '\'', '"', '/'])
-    .not().isEmpty()
+    .not().isEmpty(),
+  body('password').isLength({min: 0, max: 8})
+    .blacklist(['<', '>', '&', '\'', '"', '/'])
 ];
 
 app.get('/', (req, res) => {
-  // 部屋に入室している人数を表示
-  let numberOfPlayers = [0, 0, 0];
-  Room.rooms.forEach((room, idx) => {
-    if (room && idx !== 0) {
-      return numberOfPlayers[idx - 1] = room.players.length;
+  // 部屋に入室している人数とPWの有無を表示
+  // roomInfo = [[0, 'No'], [0, 'No'], [0, 'No'],]
+  let roomInfo = [...Array(3)].map((_, idx) => {
+    if (Room.rooms[idx + 1]) {
+      return [Room.rooms[idx + 1].players.length, Room.rooms[idx + 1].checkPasswordExists()];
     } else {
-      return numberOfPlayers[idx - 1] = 0;
+      return [0, 'No'];
     }
   });
-  res.render(__dirname + '/views/top.ejs', {numberOfPlayers: numberOfPlayers});
+  console.log(`roomInfo: ${JSON.stringify(roomInfo)}`);
+  res.render(__dirname + '/views/top.ejs', {roomInfo: roomInfo});
 });
 
 app.post('/index', validator, (req, res) => {
@@ -43,6 +46,7 @@ app.post('/index', validator, (req, res) => {
   const roomNumber = req.body.room;
   const nickname = req.body.nickname;
   const password = req.body.password;
+  console.log(`password: ${password}`);
 
   // Roomクラスにその部屋が存在するかを判定
   if (!Room.rooms[roomNumber]) {
@@ -51,14 +55,14 @@ app.post('/index', validator, (req, res) => {
     // 例: Room.rooms[1]
     Room.rooms[roomNumber] = room;
     if (password) {
-      room.password = password;
+      Room.rooms[roomNumber].password = password;
     }
   } else {
-    if (!room.checkPassword(password)) {
+    if (!Room.rooms[roomNumber].checkPassword(password)) {
       res.redirect('/');
+      return;
     }
-  }
-
+  } 
   res.render(__dirname + '/views/index.ejs', {
     roomNumber: roomNumber,
     nickname: nickname
@@ -79,7 +83,7 @@ io.on('connection', (socket) => {
     room.players.push(player);
     // 入室したユーザの情報を表示
     console.log(`Player join room: ${playerInfo[0]}, player.id: ${player.id}, player.nickname: ${player.nickname}`);
-    // roomsの数+1を表示(rooms[0]は空)
+    // roomsの数を表示(rooms[0]は空)
     console.log(`The number of rooms: ${Room.rooms.length - 1}`);
 
     // 現在の部屋状況を入室者全員に伝える
@@ -94,14 +98,20 @@ io.on('connection', (socket) => {
     room.players.map(player => io.to(player.id).emit('room-status', msg));
   });
 
-  // プレイヤーが落ちたらRoomからプレイヤーを削除
+  // クライアントとのWS通信が切れた際の処理
   socket.on('disconnecting', (_reason) => {
-    let room = Room.getRoomContainsPlayer(socket.id);
-    if (room) {
-      room.deletePassword();
-    }
+    // socket.idから部屋の番号を取得
+    const room = Room.getRoomContainsPlayer(socket.id);
     // socket.idと一致するプレイヤーを指定して削除
-    Room.rooms.map(room => room.exitPlayer(socket.id));
+    Room.rooms.map(tmpRoom => tmpRoom.exitPlayer(socket.id));
+    console.log(`socket.id: ${socket.id}`);
+    console.log(`room: ${JSON.stringify(room)}`);
+    // playerがいないならパスワードを削除
+    console.log(`room.players: ${JSON.stringify(room.players)}`);
+    if (room.players.length === 0) {
+      Room.deleteRoom(room);
+      console.log(`room is: ${typeof(room)}`);
+    }
   });
 
   // プレイヤーハンド選択時
@@ -180,7 +190,7 @@ class Room {
   static rooms = [];
   constructor() {
     this.players = [];
-    this.password;
+    this.password = null;
   }
 
   getPlayer(playerID) {
@@ -214,17 +224,13 @@ class Room {
       let player = null;
       if (room) {
         player = room.players.find((player) => {
-          if (player.id == sockId) {
-            return player;
-          }
+          if (player.id == sockId) return player;
         });
-        if (player) {
-          return room;
-        }
+        if (player) return room;
       }
     })
   }
-    
+
   checkPassword(pw) {
     if (this.password) {
       return this.password === pw;
@@ -233,8 +239,16 @@ class Room {
     }
   }
 
-  deletePassword() {
-    this.password = '';
+  static deleteRoom(roomNumber) {
+    Room.rooms = Room.rooms.filter(room => room != roomNumber);
+  }
+
+  checkPasswordExists() {
+    if (this.password) {
+      return 'Yes';
+    } else {
+      return 'No';
+    }
   }
 }
 
@@ -247,9 +261,9 @@ class Player {
   static JUDGE_PATTERNS = ['DRAW', 'LOSE', 'WIN'];
 
   constructor(nickname) {
-    this.id = '';
+    this.id = null;
     this.nickname = nickname;
-    this.hand = '';
+    this.hand = null;
   }
 
   judgeHand(hands) {
