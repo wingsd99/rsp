@@ -8,6 +8,10 @@ const {body, validationResult} = require('express-validator');
 
 const PORT = 3000;
 
+// RoomとPlayerクラスをモジュールとして読み込む
+const Room = require('./Room.js');
+const Player = require('./Player.js');
+
 app.set('view engine', 'ejs');
 app.use(express.static('./public'));
 app.use(express.urlencoded({extended:true}));
@@ -25,7 +29,7 @@ const validator = [
 app.get('/', (req, res) => {
   // 部屋に入室している人数とPWの有無を表示
   // roomInfo = [[0, 'No'], [0, 'No'], [0, 'No'],]
-  let roomInfo = [...Array(3)].map((_, idx) => {
+  const roomInfo = [...Array(3)].map((_, idx) => {
     if (Room.rooms[idx + 1]) {
       return [Room.rooms[idx + 1].players.length, Room.rooms[idx + 1].checkPasswordExists()];
     } else {
@@ -183,113 +187,6 @@ io.on('connection', (socket) => {
     room.players.map(player => io.to(player.id).emit('room-status', msg));
   });
 });
-
-class Room {
-  // インスタンスを生成せずに利用できる
-  // 例: Room.rooms[1]
-  static rooms = [];
-  constructor() {
-    this.players = [];
-    this.password = null;
-  }
-
-  getPlayer(playerID) {
-    // players配列の中でplayerIDと一致するものを返す
-    return this.players.find(player => player.id == playerID);
-  }
-
-  exitPlayer(playerID) {
-    // playerIDと一致するplayer.idを除外する(それ以外を返す)
-    this.players = this.players.filter(player => player.id != playerID);
-  }
-
-  checkAllSelect() {
-    // 新しい配列を生成
-    // player要素のplayer.handを返す
-    return this.players.map(player => player.hand)
-      // player.handが空文字列でなければcurはtrue
-      // 初期値はtrue(最初のprevはtrue)
-      // previousとcurrentが両方trueならtrueを返す
-      // player.handが1つ以上falseなら最終的にfalseが返される
-      .reduce((prev, cur) => prev && cur, true);
-  }
-
-  getHandsList() {
-    // player.handの重複を除去した配列風Setオブジェクトを生成
-    return new Set(this.players.map(player => player.hand));
-  }
-
-  static getRoomContainsPlayer(sockId) {
-    return Room.rooms.find((room) => {
-      let player = null;
-      if (room) {
-        player = room.players.find((player) => {
-          if (player.id == sockId) return player;
-        });
-        if (player) return room;
-      }
-    })
-  }
-
-  checkPassword(pw) {
-    if (this.password) {
-      return this.password === pw;
-    } else {
-      return true;
-    }
-  }
-
-  static deleteRoom(roomNumber) {
-    Room.rooms = Room.rooms.filter(room => room != roomNumber);
-  }
-
-  checkPasswordExists() {
-    if (this.password) {
-      return 'Yes';
-    } else {
-      return 'No';
-    }
-  }
-}
-
-class Player {
-  static HAND_PATTERNS = {
-    'Rock': 0,
-    'Scissors': 1,
-    'Paper': 2
-  }
-  static JUDGE_PATTERNS = ['DRAW', 'LOSE', 'WIN'];
-
-  constructor(nickname) {
-    this.id = null;
-    this.nickname = nickname;
-    this.hand = null;
-  }
-
-  judgeHand(hands) {
-    // 引数handsはplayer.handの配列風Setオブジェクト
-    // 全員の手が同じまたは3種類の手が出た場合は処理終了
-    // 配列風Setオブジェクトの要素数取得はlengthではなくsizeメソッド
-    if (hands.size == 1 || hands.size == 3) return 'DRAW';
-
-    // 2種類の手が出た場合に処理継続
-    // 例: Player.HAND_PATTERNS['rock']ならmyHandは0
-    const myHand = Player.HAND_PATTERNS[this.hand];
-    const otherHand = Player.HAND_PATTERNS[
-      // handsから新しい配列を生成する
-      // this.handと異なる手を返す
-      // 例: 'scissors'
-      Array.from(hands).find(hand => this.hand != hand)
-    ];
-    // マイナスを取り除いて0から2の値に揃えた結果を返す
-    return Player.JUDGE_PATTERNS[(myHand - otherHand + 3) % 3];
-    // myHand ↓
-    // | |0|1|2|
-    // |0|0|1|2|
-    // |1|2|0|1|
-    // |2|1|2|0|
-  }
-}
 
 server.listen(PORT, () => {
   console.log(`PORT: ${PORT}`);
