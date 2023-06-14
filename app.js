@@ -28,10 +28,10 @@ const validator = [
 
 app.get('/', (req, res) => {
   // 部屋に入室している人数とPWの有無を表示
-  // roomInfo = [[0, 'No'], [0, 'No'], [0, 'No'],]
+  // roomInfoの初期値は[[0, 'No'], [0, 'No'], [0, 'No']]
   const roomInfo = [...Array(3)].map((_, idx) => {
-    if (Room.rooms[idx + 1]) {
-      return [Room.rooms[idx + 1].players.length, Room.rooms[idx + 1].checkPasswordExists()];
+    if (Room.rooms[idx]) {
+      return [Room.rooms[idx].players.length, Room.rooms[idx].checkPasswordExists()];
     } else {
       return [0, 'No'];
     }
@@ -56,17 +56,20 @@ app.post('/index', validator, (req, res) => {
   if (!Room.rooms[roomNumber]) {
     // Roomインスタンスを生成
     const room = new Room();
-    // 例: Room.rooms[1]
     Room.rooms[roomNumber] = room;
-    if (password) {
-      Room.rooms[roomNumber].password = password;
-    }
   } else {
     if (!Room.rooms[roomNumber].checkPassword(password)) {
       res.redirect('/');
       return;
     }
-  } 
+  }
+  // passwordが入力済みならpassword機能をオンにする
+  // 1人目の入室者のみpasswordを設定可能
+  console.log(`Room.rooms[roomNumber].players.length: ${Room.rooms[roomNumber].players.length}`);
+  if (password && Room.rooms[roomNumber].players.length === 0) {
+    Room.rooms[roomNumber].password = password;
+  }
+
   res.render(__dirname + '/views/index.ejs', {
     roomNumber: roomNumber,
     nickname: nickname
@@ -77,18 +80,22 @@ io.on('connection', (socket) => {
   // プレイヤーが部屋に入室した直後
   socket.on('join-room', (playerInfo) => {
     // Roomクラスのrooms配列をroom変数で管理
+    console.log(`playerInfo: ${playerInfo}`);
     const room = Room.rooms[playerInfo[0]];
+    console.log(`new room: ${room}`);
     // playerインスタンスを生成
     const player = new Player(playerInfo[1]);
+    console.log(`new player: ${player}`);
 
     // プレイヤーIDをセットし、部屋のプレイヤーリストに登録
     player.id = socket.id;
     // rooms配列のplayers配列に追加
+    console.log(`room.players: ${room.players}`);
     room.players.push(player);
     // 入室したユーザの情報を表示
     console.log(`Player join room: ${playerInfo[0]}, player.id: ${player.id}, player.nickname: ${player.nickname}`);
-    // roomsの数を表示(rooms[0]は空)
-    console.log(`The number of rooms: ${Room.rooms.length - 1}`);
+    // Room.roomsの数を表示
+    console.log(`The number of rooms: ${Room.rooms.length}`);
 
     // 現在の部屋状況を入室者全員に伝える
     // ここから下の部分は重複しているため、updateRoomStatus()にするべきかもしれない
@@ -108,13 +115,13 @@ io.on('connection', (socket) => {
     const room = Room.getRoomContainsPlayer(socket.id);
     // socket.idと一致するプレイヤーを指定して削除
     Room.rooms.map(tmpRoom => tmpRoom.exitPlayer(socket.id));
+    // Room.rooms.map(tmpRoom => tmpRoom.exitPlayer(socket.id));
     console.log(`socket.id: ${socket.id}`);
-    console.log(`room: ${JSON.stringify(room)}`);
+    console.log(`the room check indexOf: ${JSON.stringify(Room.rooms.indexOf(room))}`);
     // playerがいないならパスワードを削除
     console.log(`room.players: ${JSON.stringify(room.players)}`);
     if (room.players.length === 0) {
-      Room.deleteRoom(room);
-      console.log(`room is: ${typeof(room)}`);
+      room.password = '';
     }
   });
 

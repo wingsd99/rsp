@@ -16,22 +16,24 @@
     <div>Select a room</div>
     <form action="/index" method="POST">
       <ul>
-      <!-- numberOfPlayersをroomInfoに変更する -->
         <% roomInfo.forEach((elm, idx) => { %>
           <li>
-            <button type="submit" name="room" value="<%= idx + 1 %>"
-              class="room-button" disabled>Join room<%= idx + 1 %>
+            <button type="submit" name="room" value="<%= idx %>"
+              class="room-button">Join room<%= idx + 1 %>
             </button>
+            <!-- 不具合修正の効率化のためdisabledを一時的に消去 -->
+            <!-- <button type="submit" name="room" value="<%= idx %>"
+              class="room-button" disabled>Join room<%= idx + 1 %>
+            </button> -->
             <div class="room-access">
               <div>Players: <%= elm[0] %> / PW: <%= elm[1] %> </div>
             </div>
           </li>
         <% }) %>
-        <% console.log(roomInfo) %>
       </ul>
       <div class="set-nickname">
         <label>Nickname</label>
-        <input type="text" name="nickname" value="" maxlength="8"
+        <input type="text" name="nickname" value="aaa" maxlength="8"
           placeholder="8 characters or less" class="nickname" />
       </div>
       <div class="set-password">

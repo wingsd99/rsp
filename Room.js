@@ -1,10 +1,10 @@
 class Room {
   // インスタンスを生成せずに利用できる
-  // 例: Room.rooms[1]
+  // e.g. room1はRoom.rooms[0]
   static rooms = [];
   constructor() {
     this.players = [];
-    this.password = null;
+    this.password;
   }
 
   getPlayer(playerID) {
@@ -34,7 +34,7 @@ class Room {
   }
 
   static getRoomContainsPlayer(sockId) {
-    return Room.rooms.find((room) => {
+    const theRoom = Room.rooms.find((room) => {
       let player = null;
       if (room) {
         player = room.players.find((player) => {
@@ -43,6 +43,8 @@ class Room {
         if (player) return room;
       }
     })
+    console.log(`getRoomContainsPlayer: ${JSON.stringify(theRoom)}`);
+    return theRoom;
   }
 
   checkPassword(pw) {
@@ -53,9 +55,13 @@ class Room {
     }
   }
 
-  static deleteRoom(roomNumber) {
-    Room.rooms = Room.rooms.filter(room => room != roomNumber);
-  }
+  // 部屋を消してしまうとroomsのindex番号がずれて部屋2が部屋1になってしまう
+  // static deleteRoom(noPlayerRoom) {
+  //   console.log(`noPlayerRoom: ${Room.rooms.indexOf(noPlayerRoom)}`);
+  //   console.log(`before delete Room.rooms: ${JSON.stringify(Room.rooms)}`);
+  //   Room.rooms = Room.rooms.filter(room => room != noPlayerRoom);
+  //   console.log(`after delete Room.rooms: ${JSON.stringify(Room.rooms)}`);
+  // }
 
   checkPasswordExists() {
     if (this.password) {

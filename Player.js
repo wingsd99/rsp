@@ -7,9 +7,9 @@ class Player {
   static JUDGE_PATTERNS = ['DRAW', 'LOSE', 'WIN'];
 
   constructor(nickname) {
-    this.id = null;
+    this.id;
     this.nickname = nickname;
-    this.hand = null;
+    this.hand;
   }
 
   judgeHand(hands) {

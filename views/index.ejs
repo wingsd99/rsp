@@ -12,7 +12,7 @@
       <h1>rsp-game</h1>
     </header>
     <div class="main">
-      <div>Room: <span class="display-room"><%= roomNumber %></span></div>
+      <div>Room: <span class="display-room"><%= parseInt(roomNumber) + 1 %></span></div>
       <div>Nickname: <span class="display-nickname"><%= nickname %></span></div>
       <p>Please select your hand</p>
       <div>
@@ -39,8 +39,7 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
       const socket = io();
-
-      const displayRoom = document.querySelector(".display-room").innerHTML;
+      const displayRoom = parseInt(document.querySelector(".display-room").innerHTML) - 1;
       const displayNickname = document.querySelector(".display-nickname").innerHTML;
       socket.emit('join-room', [displayRoom, displayNickname]);
       
