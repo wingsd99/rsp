@@ -41,7 +41,7 @@
       const socket = io();
       const displayRoom = parseInt(document.querySelector(".display-room").innerHTML) - 1;
       const displayNickname = document.querySelector(".display-nickname").innerHTML;
-      socket.emit('join-room', [displayRoom, displayNickname]);
+      socket.emit("join-room", [displayRoom, displayNickname]);
       
       const HANDS = ["Rock", "Scissors", "Paper"];
 
@@ -82,7 +82,7 @@
         resultInfo.forEach(elm => elm.innerHTML = "");
         yourResultImage.style.visibility = "hidden";
         nextGame.style.visibility = "hidden";
-        socket.emit('next-game', displayRoom);
+        socket.emit("next-game", displayRoom);
       });
 
       socket.on("room-status", (msg) => {
@@ -92,7 +92,7 @@
       socket.on("matchResult", (res) => {
         yourResult.innerHTML = `Result: <span>${res[0]}</span>`;
         // 例: 1番目に入室した人はplayerHands[0]だからPlayer1になる
-        playerHands.innerHTML = res[1].map((elm) => {
+        playerHands.innerHTML = res[1].map(elm => {
           return `${elm[0]}'s hand: ${elm[1]}`;
         }).join("<br />");
 
@@ -113,7 +113,6 @@
         yourResultImage.style.visibility = "visible";
         nextGame.style.visibility = "visible";
       });
-      //TODO: 再戦可能にする => Next gameで再戦可能
       //FIXME: ページリロード時の処理
     </script>
   </body>

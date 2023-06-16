@@ -1,18 +1,38 @@
 /* header */
 
+
 /* top.ejs / main */
 .room-access {
   display: inline-block;
 }
 
 .set-nickname {
+  display: flex;
   margin-top: 15px;
+}
+
+.nickname {
+  margin: 0 0 0 10px;
+}
+
+.set-password {
+  display: flex;
+}
+
+.password-checkbox {
+	transform: scale(1.5);
+  margin: 0 10px 0 10px;
+}
+
+.password {
+  visibility: hidden;
 }
 
 .image-rsp {
   margin-top: 50px;
   margin-bottom: 50px;
 }
+
 
 /* index.ejs / main */
 button img {

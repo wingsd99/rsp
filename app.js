@@ -26,17 +26,17 @@ const validator = [
     .blacklist(['<', '>', '&', '\'', '"', '/'])
 ];
 
+Room.rooms = Room.rooms.map(room => room = new Room());
+console.log(`Room.rooms: ${JSON.stringify(Room.rooms)}`);
+
 app.get('/', (req, res) => {
   // 部屋に入室している人数とPWの有無を表示
   // roomInfoの初期値は[[0, 'No'], [0, 'No'], [0, 'No']]
-  const roomInfo = [...Array(3)].map((_, idx) => {
-    if (Room.rooms[idx]) {
-      return [Room.rooms[idx].players.length, Room.rooms[idx].checkPasswordExists()];
-    } else {
-      return [0, 'No'];
-    }
+  const roomInfo = Room.rooms.map(room => {
+    return [room.players.length, room.checkPasswordExists()];
   });
-  console.log(`roomInfo: ${JSON.stringify(roomInfo)}`);
+
+  console.log(`roomInfo: ${roomInfo}`);
   res.render(__dirname + '/views/top.ejs', {roomInfo: roomInfo});
 });
 
@@ -52,20 +52,13 @@ app.post('/index', validator, (req, res) => {
   const password = req.body.password;
   console.log(`password: ${password}`);
 
-  // Roomクラスにその部屋が存在するかを判定
-  if (!Room.rooms[roomNumber]) {
-    // Roomインスタンスを生成
-    const room = new Room();
-    Room.rooms[roomNumber] = room;
-  } else {
-    if (!Room.rooms[roomNumber].checkPassword(password)) {
-      res.redirect('/');
-      return;
-    }
+  if (!Room.rooms[roomNumber].checkPassword(password)) {
+    res.redirect('/');
+    return;
   }
+
   // passwordが入力済みならpassword機能をオンにする
-  // 1人目の入室者のみpasswordを設定可能
-  console.log(`Room.rooms[roomNumber].players.length: ${Room.rooms[roomNumber].players.length}`);
+  // 1人目の入室者のみ設定可能
   if (password && Room.rooms[roomNumber].players.length === 0) {
     Room.rooms[roomNumber].password = password;
   }
@@ -79,32 +72,20 @@ app.post('/index', validator, (req, res) => {
 io.on('connection', (socket) => {
   // プレイヤーが部屋に入室した直後
   socket.on('join-room', (playerInfo) => {
-    // Roomクラスのrooms配列をroom変数で管理
-    console.log(`playerInfo: ${playerInfo}`);
     const room = Room.rooms[playerInfo[0]];
-    console.log(`new room: ${room}`);
     // playerインスタンスを生成
     const player = new Player(playerInfo[1]);
-    console.log(`new player: ${player}`);
-
     // プレイヤーIDをセットし、部屋のプレイヤーリストに登録
     player.id = socket.id;
-    // rooms配列のplayers配列に追加
-    console.log(`room.players: ${room.players}`);
     room.players.push(player);
     // 入室したユーザの情報を表示
     console.log(`Player join room: ${playerInfo[0]}, player.id: ${player.id}, player.nickname: ${player.nickname}`);
-    // Room.roomsの数を表示
-    console.log(`The number of rooms: ${Room.rooms.length}`);
 
     // 現在の部屋状況を入室者全員に伝える
-    // ここから下の部分は重複しているため、updateRoomStatus()にするべきかもしれない
     let msg = 'Ready for battle!';
-    // playerインスタンスが1つなら待機メッセージ
     if (room.players.length === 1) {
       msg = 'Waiting for other players to join...';
     }
-    console.log(msg);
     // player.idを使ってmsgを送る
     room.players.map(player => io.to(player.id).emit('room-status', msg));
   });
@@ -113,26 +94,16 @@ io.on('connection', (socket) => {
   socket.on('disconnecting', (_reason) => {
     // socket.idから部屋の番号を取得
     const room = Room.getRoomContainsPlayer(socket.id);
-    // socket.idと一致するプレイヤーを指定して削除
-    Room.rooms.map(tmpRoom => tmpRoom.exitPlayer(socket.id));
-    // Room.rooms.map(tmpRoom => tmpRoom.exitPlayer(socket.id));
-    console.log(`socket.id: ${socket.id}`);
-    console.log(`the room check indexOf: ${JSON.stringify(Room.rooms.indexOf(room))}`);
+    room.exitPlayer(socket.id);
     // playerがいないならパスワードを削除
-    console.log(`room.players: ${JSON.stringify(room.players)}`);
     if (room.players.length === 0) {
       room.password = '';
     }
   });
 
-  // プレイヤーハンド選択時
   socket.on('player-select', (playerInfo) => {
-    // 部屋とプレイヤーのオブジェクトを取得する
-    // 例: ['rock', 1]
     const room = Room.rooms[playerInfo[1]];
-    // socket.idと一致するプレイヤーを指定
     const player = room.getPlayer(socket.id);
-    // 選択された手を当該プレイヤーにセット
     player.hand = playerInfo[0];
     console.log(`Player ${player.nickname} selected ${player.hand}`);
 
@@ -143,23 +114,11 @@ io.on('connection', (socket) => {
     // 部屋の全員が手を選んでいなければ未選択のプレイヤー一覧を送信
     // 入室人数が3人なら手が3つ選択されるまで待機
     if (!room.checkAllSelect()) {
-      // let playersUnselect = room.players.map((tmpPlayer, idx) => {
-      // // tmpPlayerの手が選択済みならfalseを返す(右の式は評価されない)
-      // // tmpPlayerの手が未選択(左の式がtrue)ならidx+1の値を返す
-      //   return !tmpPlayer.hand && idx + 1;
-      // // idxが整数ならtrueを返す(0以下の負の整数と空値もtrue)
-      // // falseが配列として入ってしまうため、それを除いた配列を返す
-      // // .filter(Boolean) で同じことを実現できる
-      // }).filter(Boolean);
-      // // .filter(playerUnselect => Number.isInteger(playerUnselect));
-
-      const playerUnselect = room.players.map((tmpPlayer, idx) => {
+      const undecidedPlayers = room.players.map(tmpPlayer => {
         return !tmpPlayer.hand && tmpPlayer.nickname;
       }).filter(Boolean);
-
-      console.log(`${playerUnselect} unselect a hand`);
       room.players.forEach(tmpPlayer => {
-        io.to(tmpPlayer.id).emit('room-status', `Waiting other player's hand: player=${playerUnselect}`)
+        io.to(tmpPlayer.id).emit('room-status', `Waiting other player's hand: player=${undecidedPlayers}`)
       });
       // このreturnはplayer-selectイベントを抜ける
       return;
@@ -169,7 +128,6 @@ io.on('connection', (socket) => {
     // 重複のない手の一覧を取得
     const handsList = room.getHandsList();
     room.players.map(tmpPlayer => {
-      console.log(`nickname: ${tmpPlayer.nickname}, hand: ${tmpPlayer.hand}, result: ${tmpPlayer.judgeHand(handsList)}`);
       const result = [
         tmpPlayer.judgeHand(handsList),
         room.players.map(elm => [elm.nickname, elm.hand])
@@ -189,7 +147,6 @@ io.on('connection', (socket) => {
     if (room.players.length === 1) {
       msg = 'Waiting for other players to join...';
     }
-    console.log(msg);
     // 指定はなくても動作するがplayer.idで対象を絞っている
     room.players.map(player => io.to(player.id).emit('room-status', msg));
   });
