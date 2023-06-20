@@ -8,9 +8,8 @@
   <title>rsp-game</title>
 </head>
 <body>
-  <header>
-    <h1>rsp-game</h1>
-  </header>
+  <!-- header -->
+  <%- include('header') %>
   <div class="main">
     <div>Welcome to my page</div>
     <div>Select a room</div>
@@ -45,7 +44,7 @@
         </p>
       </div>
       <div>
-        <% if (typeof errors !== "undefined") {%>
+        <% if (!typeof(errors)) {%>
           <div><%= console.log(errors) %></div>
         <% } %>
       </div>

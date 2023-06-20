@@ -4,30 +4,60 @@ const http = require('http');
 const server = http.createServer(app);
 // socket.ioに引数serverを渡す省略記法
 const io = require('socket.io')(server);
-const {body, validationResult} = require('express-validator');
-
 const PORT = 3000;
 
-// RoomとPlayerクラスをモジュールとして読み込む
-const Room = require('./Room.js');
-const Player = require('./Player.js');
+const session = require('express-session');
+const bcrypt = require('bcrypt');
+const {body, validationResult} = require('express-validator');
 
 app.set('view engine', 'ejs');
 app.use(express.static('./public'));
 app.use(express.urlencoded({extended:true}));
 
+// RoomとPlayerクラスをモジュールとして読み込む
+const Room = require('./Room.js');
+const Player = require('./Player.js');
+
+// mysqlは導入済み
+// データベースとテーブルはまだ未作成
+// const connection = mysql.createConnection({
+//   host: 'localhost',
+//   user: 'root',
+//   password: '********',
+//   database: 'rsp'
+// });
+
+app.use(
+  session({
+    secret: 'my_seacret_key',
+    resava: false,
+    savaUninitialized: false
+  })
+);
+
 const validator = [
   body('room').isInt().not().isEmpty(),
   body('nickname').isLength({min: 1, max: 8})
-    // 特殊文字を取り除く
-    .blacklist(['<', '>', '&', '\'', '"', '/'])
-    .not().isEmpty(),
+  // 特殊文字を取り除く
+  .blacklist(['<', '>', '&', '\'', '"', '/'])
+  .not().isEmpty(),
   body('password').isLength({min: 0, max: 8})
-    .blacklist(['<', '>', '&', '\'', '"', '/'])
+  .blacklist(['<', '>', '&', '\'', '"', '/'])
 ];
 
 Room.rooms = Room.rooms.map(room => room = new Room());
 console.log(`Room.rooms: ${JSON.stringify(Room.rooms)}`);
+
+app.use((req, res, next) => {
+  if (!req.session.userId) {
+    res.locals.username = 'guest';
+    res.locals.isLoggedIn = false;
+  } else {
+    res.locals.username = req.session.username;
+    res.locals.isLoggedIn = true;
+  }
+  next();
+});
 
 app.get('/', (req, res) => {
   // 部屋に入室している人数とPWの有無を表示
@@ -38,6 +68,94 @@ app.get('/', (req, res) => {
 
   console.log(`roomInfo: ${roomInfo}`);
   res.render(__dirname + '/views/top.ejs', {roomInfo: roomInfo});
+});
+
+app.get('/signup', (req, res) => {
+  res.render('signup.ejs', {errors: []});
+});
+
+app.post('/signup',
+  // バリデーションチェック
+  (req, res, next) => {
+    const errors = [];
+    if (!req.body.username) {
+      errors.push('empty username');
+    }
+    if (!req.body.password) {
+      errors.push('empty password');
+    }
+
+    if (errors.length > 0) {
+      res.render('signup.ejs', {errors: errors});
+    } else {
+      next();
+    }
+  },
+  // usernameの重複チェック
+  (req, res, next) => {
+    const errors = [];
+    connection.query(
+      // emailの代わりにアカウント名を使う
+      'SELECT * FROM users WHERE username = ?',
+      [username],
+      (error, results) => {
+        if (results.length > 0) {
+          errors.push('Failure to sign up');
+          res.render('signup.ejs', {errors: errors});
+        } else {
+          next();
+        }
+      }
+    );
+  },
+  // アカウントの登録
+  (req, res) => {
+    bcrypt.hash(password, 10, (error, hash) => {
+      connection.query(
+        'INSERT INTO users (username, password) VALUES (?, ?)',
+        [username, hash],
+        (error, results) => {
+          req.session.userId = results.insertId;
+          req.session.username = username;
+          res.redirect('/');
+        }
+      );
+    });
+  }
+);
+
+app.get('/login', (req, res) => {
+  res.render('login.ejs');
+});
+
+app.post('/login', (req, res) => {
+  connection.query(
+    'SELECT * FROM users WHERE username = ?',
+    [username],
+    (error, results) => {
+      if (results.length > 0) {
+        const hash = results[0].password;
+        bcrypt.compare(req.body.password, hash, (error, isEqual) => {
+          if (isEqual) {
+            req.session.userId = results[0].id;
+            req.session.username = results[0].username;
+            req.redirect('/');
+          } else {
+            res.redirect('/login');
+          }
+        });
+        return;
+      } else {
+        res.redirect('/login');
+      }
+    }
+  );
+});
+
+app.get('/logout', (req, res) => {
+  req.session.destroy((_error) => {
+    res.redirect('/');
+  });
 });
 
 app.post('/index', validator, (req, res) => {

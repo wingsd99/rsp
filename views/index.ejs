@@ -5,12 +5,11 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/css/style.css">
-    <title>rsp-game</title>
+    <title>RSP-GAME</title>
   </head>
   <body>
-    <header>
-      <h1>rsp-game</h1>
-    </header>
+    <!-- header -->
+    <%- include('header') %>
     <div class="main">
       <div>Room: <span class="display-room"><%= parseInt(roomNumber) + 1 %></span></div>
       <div>Nickname: <span class="display-nickname"><%= nickname %></span></div>

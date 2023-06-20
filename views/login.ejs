@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RSP-GAME</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- header -->
+  <%- include('header') %>
+  <h2>Log in</h2>
+  <form action="/login" method="post">
+    <p>username</p>
+    <input type="text" name="username">
+    <p>password</p>
+    <input type="password" name="password">
+    <input type="submit" value="Log in">
+    <a href="/">Back to top page</a>
+  </form>
+</body>
+</html>

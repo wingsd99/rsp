@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RSP-GAME</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- header -->
+  <%- include('header') %>
+  <h2>Sign up</h2>
+  <% if (errors.length > 0) { %>
+    <ul>
+      <% errors.forEach(error => { %>
+        <li><%= error %></li>
+      <% }) %>
+    </ul>
+  <% } %>
+  <form action="/signup" method="post">
+    <p>username</p>
+    <input type="text" name="username">
+    <p>password</p>
+    <input type="password" name="password">
+    <input type="submit" value="Sign up">
+  </form>
+</body>
+</html>
