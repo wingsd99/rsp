@@ -74,7 +74,7 @@ app.get('/signup', (req, res) => {
 });
 
 app.post('/signup',
-  // バリデーションチェック
+  // バリデーション
   (req, res, next) => {
     const errors = [];
     if (!req.body.username) {
@@ -94,7 +94,6 @@ app.post('/signup',
   (req, res, next) => {
     const errors = [];
     connection.query(
-      // emailの代わりにアカウント名を使う
       'SELECT * FROM users WHERE username = ?',
       [req.body.username],
       (error, results) => {
