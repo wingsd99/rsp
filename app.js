@@ -6,6 +6,7 @@ const server = http.createServer(app);
 const io = require('socket.io')(server);
 const PORT = 3000;
 
+const mysql = require('mysql');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
 const {body, validationResult} = require('express-validator');
@@ -18,20 +19,18 @@ app.use(express.urlencoded({extended:true}));
 const Room = require('./Room.js');
 const Player = require('./Player.js');
 
-// mysqlは導入済み
-// データベースとテーブルはまだ未作成
-// const connection = mysql.createConnection({
-//   host: 'localhost',
-//   user: 'root',
-//   password: '********',
-//   database: 'rsp'
-// });
+const connection = mysql.createConnection({
+  host: 'localhost',
+  user: 'root',
+  password: '********',
+  database: 'rsp_game'
+});
 
 app.use(
   session({
-    secret: 'my_seacret_key',
-    resava: false,
-    savaUninitialized: false
+    secret: '********',
+    resave: false,
+    saveUninitialized: false
   })
 );
 
@@ -97,7 +96,7 @@ app.post('/signup',
     connection.query(
       // emailの代わりにアカウント名を使う
       'SELECT * FROM users WHERE username = ?',
-      [username],
+      [req.body.username],
       (error, results) => {
         if (results.length > 0) {
           errors.push('Failure to sign up');
@@ -110,13 +109,13 @@ app.post('/signup',
   },
   // アカウントの登録
   (req, res) => {
-    bcrypt.hash(password, 10, (error, hash) => {
+    bcrypt.hash(req.body.password, 10, (error, hash) => {
       connection.query(
         'INSERT INTO users (username, password) VALUES (?, ?)',
-        [username, hash],
+        [req.body.username, hash],
         (error, results) => {
           req.session.userId = results.insertId;
-          req.session.username = username;
+          req.session.username = req.body.username;
           res.redirect('/');
         }
       );
@@ -131,7 +130,7 @@ app.get('/login', (req, res) => {
 app.post('/login', (req, res) => {
   connection.query(
     'SELECT * FROM users WHERE username = ?',
-    [username],
+    [req.body.username],
     (error, results) => {
       if (results.length > 0) {
         const hash = results[0].password;
@@ -139,7 +138,7 @@ app.post('/login', (req, res) => {
           if (isEqual) {
             req.session.userId = results[0].id;
             req.session.username = results[0].username;
-            req.redirect('/');
+            res.redirect('/');
           } else {
             res.redirect('/login');
           }

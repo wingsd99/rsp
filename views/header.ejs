@@ -1,7 +1,7 @@
 <header>
-  <a href="/">top page</a>
-  <p>User: <%= locals.username %></p>
+  <h1>RSP-GAME</h1>
   <ul>
+    <li><a href="/">top page</a></li>
     <% if (locals.isLoggedIn) { %>
       <li><a href="/logout">Log out</a></li>
     <% } else { %>
@@ -9,5 +9,5 @@
       <li><a href="/login">Log in</a></li>
     <% } %>
   </ul>
-  <h1>RSP-GAME</h1>
+  <p>User: <%= locals.username %></p>
 </header>
