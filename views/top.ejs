@@ -28,8 +28,9 @@
       </ul>
       <div class="set-nickname">
         <label>Nickname</label>
-        <input type="text" name="nickname" value="" maxlength="8"
-          placeholder="8 characters or less" class="nickname" />
+        <input type="text" name="nickname" maxlength="8"
+          placeholder="8 characters or less" class="nickname"
+          value="<%= locals.isLoggedIn ? locals.username : "" %>" />
       </div>
       <div>
         <div class="set-password">
@@ -61,8 +62,9 @@
     const passwordCheckbox = document.querySelector(".password-checkbox");
     const password = document.querySelector(".password");
 
-    // locals.usernameをnicknameに反映
-    // if (locals.username) では動作しなかった
+    if (nickname.value) {
+      roomButton.forEach(elm => elm.disabled = false);
+    }
 
     nickname.addEventListener("input", () => {
       if (nickname.value) {
