@@ -34,14 +34,21 @@ app.use(
   })
 );
 
-const validator = [
+// 未使用のnameがあるとエラーになるため、分割した
+const roomValidator = [
   body('room').isInt().not().isEmpty(),
   body('nickname').isLength({min: 1, max: 8})
   // 特殊文字を取り除く
   .blacklist(['<', '>', '&', '\'', '"', '/'])
-  .not().isEmpty(),
+  .not().isEmpty().isLength({min: 1, max: 8}),
   body('password').isLength({min: 0, max: 8})
   .blacklist(['<', '>', '&', '\'', '"', '/']),
+];
+
+const accountValidator = [
+  body('username').isLength({min: 1, max: 8})
+  .blacklist(['<', '>', '&', '\'', '"', '/'])
+  .not().isEmpty().isLength({min: 1, max: 8}),
   body('accountPassword').isLength({min: 4, max: 16})
   .blacklist(['<', '>', '&', '\'', '"', '/'])
 ];
@@ -75,22 +82,21 @@ app.get('/signup', (req, res) => {
   res.render('signup.ejs', {errors: []});
 });
 
-app.post('/signup',
-  // バリデーション
-  // validator,
+app.post('/signup', accountValidator,
   (req, res, next) => {
-    const errors = [];
-  // const errors = validationResult(req);
-  // if (!errors.isEmpty()) {
-  //   res.redirect('/');
-  //   console.log(errors.array());
-  //   return;
-  // }
-    if (!req.body.username) {
-      errors.push('empty username');
+    // バリデーション
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.redirect('/');
+      console.log(errors.array());
+      return;
     }
-    if (!req.body.password) {
-      errors.push('empty password');
+    if (!req.body.username) {
+      errors.push('username error');
+    }
+
+    if (!req.body.accountPassword) {
+      errors.push('password error');
     }
 
     if (errors.length > 0) {
@@ -119,7 +125,7 @@ app.post('/signup',
   },
   // アカウントの登録
   (req, res) => {
-    bcrypt.hash(req.body.password, 10, (error, hash) => {
+    bcrypt.hash(req.body.accountPassword, 10, (error, hash) => {
       connection.query(
         'INSERT INTO users (username, password) VALUES (?, ?)',
         [req.body.username, hash],
@@ -138,14 +144,14 @@ app.get('/login', (req, res) => {
   res.render('login.ejs');
 });
 
-app.post('/login', (req, res) => {
+app.post('/login', accountValidator, (req, res) => {
   connection.query(
     'SELECT * FROM users WHERE username = ?',
     [req.body.username],
     (error, results) => {
       if (results.length > 0) {
         const hash = results[0].password;
-        bcrypt.compare(req.body.password, hash, (error, isEqual) => {
+        bcrypt.compare(req.body.accountPassword, hash, (error, isEqual) => {
           if (isEqual) {
             req.session.userId = results[0].id;
             req.session.username = results[0].username;
@@ -168,7 +174,7 @@ app.get('/logout', (req, res) => {
   });
 });
 
-app.post('/index', validator, (req, res) => {
+app.post('/index', roomValidator, (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     res.redirect('/');
