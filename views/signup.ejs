@@ -18,11 +18,38 @@
     </ul>
   <% } %>
   <form action="/signup" method="post">
-    <p>username</p>
-    <input type="text" name="username">
-    <p>password</p>
-    <input type="password" name="accountPassword">
-    <input type="submit" value="Sign up">
+    <div class="set-username">
+      <label>Username</label>
+      <input type="text" name="username" value="" maxlength="8"
+        placeholder="8 characters or less" class="username" />
+    </div>
+    <div class="set-account-password">
+      <label>Account password</label>
+      <input type="password" name="accountPassword" value="" minlength="4"
+        maxlength="16" placeholder="between 4-16 characters" class="account-password" />
+    </div>
+    <button class="sign-up" disabled>Sign up</button>
+    <p>
+      <div>* Cannot contain these characters: <, >, &, ', " and /</div>
+    </p>
   </form>
 </body>
+<script>
+  const username = document.querySelector(".username");
+  const accountPassword = document.querySelector(".account-password");
+  const signUp = document.querySelector(".sign-up");
+
+  checkInputValue = () => {
+    if (username.value) {
+      if (accountPassword.value.length > 3) {
+        signUp.disabled = false;
+        return;
+      }
+    }
+    signUp.disabled = true;
+  };
+
+  username.addEventListener("input", () => checkInputValue());
+  accountPassword.addEventListener("input", () => checkInputValue());
+</script>
 </html>

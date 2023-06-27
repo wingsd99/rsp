@@ -41,6 +41,23 @@ a {
   margin-bottom: 50px;
 }
 
+/* signup.ejs */
+.set-username {
+  display: flex;
+  margin-top: 15px;
+}
+
+.username {
+  margin: 0 0 0 10px;
+}
+
+.set-account-password {
+  display: flex;
+}
+
+.account-password {
+  margin: 0 0 0 10px;
+}
 
 /* index.ejs / main */
 button img {

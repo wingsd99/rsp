@@ -91,19 +91,8 @@ app.post('/signup', accountValidator,
       console.log(errors.array());
       return;
     }
-    if (!req.body.username) {
-      errors.push('username error');
-    }
-
-    if (!req.body.accountPassword) {
-      errors.push('password error');
-    }
-
-    if (errors.length > 0) {
-      res.render('signup.ejs', {errors: errors});
-    } else {
-      next();
-    }
+    // 
+    next();
   },
   // usernameの重複チェック
   (req, res, next) => {
