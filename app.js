@@ -41,6 +41,8 @@ const validator = [
   .blacklist(['<', '>', '&', '\'', '"', '/'])
   .not().isEmpty(),
   body('password').isLength({min: 0, max: 8})
+  .blacklist(['<', '>', '&', '\'', '"', '/']),
+  body('accountPassword').isLength({min: 4, max: 16})
   .blacklist(['<', '>', '&', '\'', '"', '/'])
 ];
 
@@ -75,8 +77,15 @@ app.get('/signup', (req, res) => {
 
 app.post('/signup',
   // バリデーション
+  // validator,
   (req, res, next) => {
     const errors = [];
+  // const errors = validationResult(req);
+  // if (!errors.isEmpty()) {
+  //   res.redirect('/');
+  //   console.log(errors.array());
+  //   return;
+  // }
     if (!req.body.username) {
       errors.push('empty username');
     }
@@ -95,8 +104,10 @@ app.post('/signup',
     const errors = [];
     connection.query(
       'SELECT * FROM users WHERE username = ?',
+      // 疑問符プレースホルダを用いてエスケープ
       [req.body.username],
       (error, results) => {
+        console.log(`SELECT results: ${results}`);
         if (results.length > 0) {
           errors.push('Failure to sign up');
           res.render('signup.ejs', {errors: errors});
@@ -113,6 +124,7 @@ app.post('/signup',
         'INSERT INTO users (username, password) VALUES (?, ?)',
         [req.body.username, hash],
         (error, results) => {
+          console.log(`INSERT results: ${results}`);
           req.session.userId = results.insertId;
           req.session.username = req.body.username;
           res.redirect('/');
