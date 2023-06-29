@@ -102,9 +102,9 @@ app.post('/signup', accountValidator,
       // 疑問符プレースホルダを用いてエスケープ
       [req.body.username],
       (error, results) => {
-        console.log(`SELECT results: ${results}`);
+        console.log(`SELECT results: ${JSON.stringify(results)}`);
         if (results.length > 0) {
-          errors.push('Failure to sign up');
+          errors.push('The username is already taken');
           res.render('signup.ejs', {errors: errors});
         } else {
           next();
@@ -119,7 +119,7 @@ app.post('/signup', accountValidator,
         'INSERT INTO users (username, password) VALUES (?, ?)',
         [req.body.username, hash],
         (error, results) => {
-          console.log(`INSERT results: ${results}`);
+          console.log(`INSERT results: ${JSON.stringify(results)}`);
           req.session.userId = results.insertId;
           req.session.username = req.body.username;
           res.redirect('/');

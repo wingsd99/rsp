@@ -18,7 +18,7 @@
     </div>
     <div class="set-account-password">
       <label>Account password</label>
-      <input type="password" name="accountPassword" value="" minlength="16"
+      <input type="password" name="accountPassword" value="" minlength="4"
         maxlength="16" placeholder="between 4-16 characters" class="account-password" />
     </div>
     <button class="log-in" disabled>Log in</button>
@@ -30,16 +30,16 @@
 <script>
   const username = document.querySelector(".username");
   const accountPassword = document.querySelector(".account-password");
-  const signUp = document.querySelector(".sign-up");
+  const logIn = document.querySelector(".log-in");
 
   checkInputValue = () => {
     if (username.value) {
       if (accountPassword.value.length > 3) {
-        signUp.disabled = false;
+        logIn.disabled = false;
         return;
       }
     }
-    signUp.disabled = true;
+    logIn.disabled = true;
   };
 
   username.addEventListener("input", () => checkInputValue());
