@@ -1,71 +1,27 @@
 const express = require('express');
 const app = express();
-const http = require('http');
-const server = http.createServer(app);
+const server = require('http').createServer(app);
 // socket.ioに引数serverを渡す省略記法
 const io = require('socket.io')(server);
-const PORT = 3000;
 
-const mysql = require('mysql');
-const session = require('express-session');
+const { validationResult } = require('express-validator');
 const bcrypt = require('bcrypt');
-const {body, validationResult} = require('express-validator');
 
 app.set('view engine', 'ejs');
 app.use(express.static('./public'));
-app.use(express.urlencoded({extended:true}));
+app.use(express.urlencoded({ extended: true }));
 
-// RoomとPlayerクラスをモジュールとして読み込む
-const Room = require('./Room.js');
-const Player = require('./Player.js');
+const Room = require('./my-room.js');
+const Player = require('./my-player.js');
+const { connection } = require('./my-connection.js');
+const { roomValidator, accountValidator } = require('./my-validator.js');
+const { session, checkSession } = require('./my-session.js');
 
-const connection = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: '********',
-  database: 'rsp_game'
-});
-
-app.use(
-  session({
-    secret: '********',
-    resave: false,
-    saveUninitialized: false
-  })
-);
-
-// 未使用のnameがあるとエラーになるため、分割した
-const roomValidator = [
-  body('room').isInt().not().isEmpty(),
-  body('nickname').isLength({min: 1, max: 8})
-  // 特殊文字を取り除く
-  .blacklist(['<', '>', '&', '\'', '"', '/'])
-  .not().isEmpty().isLength({min: 1, max: 8}),
-  body('password').isLength({min: 0, max: 8})
-  .blacklist(['<', '>', '&', '\'', '"', '/']),
-];
-
-const accountValidator = [
-  body('username').isLength({min: 1, max: 8})
-  .blacklist(['<', '>', '&', '\'', '"', '/'])
-  .not().isEmpty().isLength({min: 1, max: 8}),
-  body('accountPassword').isLength({min: 4, max: 16})
-  .blacklist(['<', '>', '&', '\'', '"', '/'])
-];
+app.use(session);
+app.use(checkSession);
 
 Room.rooms = Room.rooms.map(room => room = new Room());
 console.log(`Room.rooms: ${JSON.stringify(Room.rooms)}`);
-
-app.use((req, res, next) => {
-  if (!req.session.userId) {
-    res.locals.username = 'guest';
-    res.locals.isLoggedIn = false;
-  } else {
-    res.locals.username = req.session.username;
-    res.locals.isLoggedIn = true;
-  }
-  next();
-});
 
 app.get('/', (req, res) => {
   // 部屋に入室している人数とPWの有無を表示
@@ -75,11 +31,11 @@ app.get('/', (req, res) => {
   });
 
   console.log(`roomInfo: ${roomInfo}`);
-  res.render(__dirname + '/views/top.ejs', {roomInfo: roomInfo});
+  res.render(__dirname + '/views/top.ejs', { roomInfo: roomInfo });
 });
 
 app.get('/signup', (req, res) => {
-  res.render('signup.ejs', {errors: []});
+  res.render('signup.ejs', { errors: [] });
 });
 
 app.post('/signup', accountValidator,
@@ -91,7 +47,6 @@ app.post('/signup', accountValidator,
       console.log(errors.array());
       return;
     }
-    // 
     next();
   },
   // usernameの重複チェック
@@ -105,7 +60,7 @@ app.post('/signup', accountValidator,
         console.log(`SELECT results: ${JSON.stringify(results)}`);
         if (results.length > 0) {
           errors.push('The username is already taken');
-          res.render('signup.ejs', {errors: errors});
+          res.render('signup.ejs', { errors: errors });
         } else {
           next();
         }
@@ -274,6 +229,8 @@ io.on('connection', (socket) => {
     room.players.map(player => io.to(player.id).emit('room-status', msg));
   });
 });
+
+const PORT = 3000;
 
 server.listen(PORT, () => {
   console.log(`PORT: ${PORT}`);

@@ -1,5 +1,7 @@
 # gitの管理対象から外したいフォルダやファイルを記述
-# node_modulesを管理対象外にする
+
 node_modules/
-# package-lock.jsonを管理対象外にする
-/package-lock.json
+
+# 概要を共有するため、一時的にignoreから外す
+# /my-connection.js
+# /my-session.js
