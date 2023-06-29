@@ -2,6 +2,5 @@
 
 node_modules/
 
-# 概要を共有するため、一時的にignoreから外す
-# /my-connection.js
-# /my-session.js
+/my-connection.js
+/my-session.js
