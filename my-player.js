@@ -10,6 +10,7 @@ class Player {
     this.id;
     this.nickname = nickname;
     this.hand;
+    this.isLoggedIn = false;
   }
 
   judgeHand(hands) {

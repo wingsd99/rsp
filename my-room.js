@@ -25,9 +25,9 @@ class Room {
     return new Set(this.players.map(player => player.hand));
   }
 
-  static getRoomContainsPlayer(sockId) {
+  static getRoomContainsPlayer(sockID) {
     return Room.rooms.find(room => {
-      return room.players.find(player => player.id === sockId && player) && room;
+      return room.players.find(player => player.id === sockID && player) && room;
     });
   }
 

@@ -15,10 +15,11 @@ const Room = require('./my-room.js');
 const Player = require('./my-player.js');
 const { connection } = require('./my-connection.js');
 const { roomValidator, accountValidator } = require('./my-validator.js');
-const { session, checkSession } = require('./my-session.js');
+const { session, checkSession, wrap } = require('./my-session.js');
 
 app.use(session);
 app.use(checkSession);
+io.use(wrap(session));
 
 Room.rooms = Room.rooms.map(room => room = new Room());
 console.log(`Room.rooms: ${JSON.stringify(Room.rooms)}`);
@@ -108,6 +109,23 @@ app.post('/login', accountValidator, (req, res) => {
       } else {
         res.redirect('/login');
       }
+      // results.length = 0で弾きたい処理を先に記述したほうが見通しが良くなりそう
+      // returnで意図通りの順序になるかは不明
+      // if (results.length > 0) {
+      //   const hash = results[0].password;
+      //   bcrypt.compare(req.body.accountPassword, hash, (error, isEqual) => {
+      //     if (isEqual) {
+      //       req.session.userId = results[0].id;
+      //       req.session.username = results[0].username;
+      //       res.redirect('/');
+      //     } else {
+      //       res.redirect('/login');
+      //     }
+      //   });
+      //   return;
+      // } else {
+      //   res.redirect('/login');
+      // }
     }
   );
 });
@@ -156,8 +174,14 @@ io.on('connection', (socket) => {
     // プレイヤーIDをセットし、部屋のプレイヤーリストに登録
     player.id = socket.id;
     room.players.push(player);
+
+    if (socket.request.session.userId) {
+      // player.isLoggedIn = true;
+      console.log(`socket.request.session.userId: ${socket.request.session.userId}`);
+    }
+
     // 入室したユーザの情報を表示
-    console.log(`Player join room: ${playerInfo[0]}, player.id: ${player.id}, player.nickname: ${player.nickname}`);
+    console.log(`Player join room: ${playerInfo[0] + 1}, player.id: ${player.id}, player.nickname: ${player.nickname}`);
 
     // 現在の部屋状況を入室者全員に伝える
     let msg = 'Ready for battle!';
@@ -166,17 +190,6 @@ io.on('connection', (socket) => {
     }
     // player.idを使ってmsgを送る
     room.players.map(player => io.to(player.id).emit('room-status', msg));
-  });
-
-  // クライアントとのWS通信が切れた際の処理
-  socket.on('disconnecting', (_reason) => {
-    // socket.idから部屋の番号を取得
-    const room = Room.getRoomContainsPlayer(socket.id);
-    room.exitPlayer(socket.id);
-    // playerがいないならパスワードを削除
-    if (room.players.length === 0) {
-      room.password = '';
-    }
   });
 
   socket.on('player-select', (playerInfo) => {
@@ -217,8 +230,8 @@ io.on('connection', (socket) => {
     room.players.map(tmpPlayer => tmpPlayer.hand = '');
   });
   
-  socket.on('next-game', (roomID) => {
-    const room = Room.rooms[roomID];
+  socket.on('next-game', (roomId) => {
+    const room = Room.rooms[roomId];
     // 現在の部屋状況を入室者全員に伝える
     let msg = 'Ready for battle!';
     // playerインスタンスが1つなら待機メッセージ
@@ -227,6 +240,17 @@ io.on('connection', (socket) => {
     }
     // 指定はなくても動作するがplayer.idで対象を絞っている
     room.players.map(player => io.to(player.id).emit('room-status', msg));
+  });
+
+  // クライアントとのWS通信が切れた際の処理
+  socket.on('disconnecting', (_reason) => {
+    // socket.idから部屋の番号を取得
+    const room = Room.getRoomContainsPlayer(socket.id);
+    room.exitPlayer(socket.id);
+    // playerがいないならパスワードを削除
+    if (room.players.length === 0) {
+      room.password = '';
+    }
   });
 });
 
