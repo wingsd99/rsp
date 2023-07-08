@@ -1,9 +1,6 @@
 const session = require('express-session');
 require('dotenv').config();
 
-console.log(process.env.SESSION_KEY);
-
-
 exports.session = session({
   secret: process.env.SESSION_KEY,
   resave: false,
