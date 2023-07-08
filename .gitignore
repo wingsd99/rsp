@@ -1,6 +1,3 @@
 # gitの管理対象から外したいフォルダやファイルを記述
-
-node_modules/
-
-/my-connection.js
-/my-session.js
+/node_modules/
+/.env
