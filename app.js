@@ -36,7 +36,7 @@ app.get('/', (req, res) => {
 });
 
 app.get('/signup', (req, res) => {
-  res.render('signup.ejs', { errors: [] });
+  res.render('signup.ejs', { errorMessages: [] });
 });
 
 app.post('/signup', accountValidator,
@@ -52,19 +52,18 @@ app.post('/signup', accountValidator,
   },
   // usernameの重複チェック
   (req, res, next) => {
-    const errors = [];
+    const errorMessages = [];
     connection.query(
       'SELECT * FROM users WHERE username = ?',
       // 疑問符プレースホルダを用いてエスケープ
       [req.body.username],
       (error, results) => {
-        console.log(`SELECT results: ${JSON.stringify(results)}`);
         if (results.length > 0) {
-          errors.push('The username is already taken');
-          res.render('signup.ejs', { errors: errors });
-        } else {
-          next();
+          errorMessages.push('The username is already taken');
+          res.render('signup.ejs', { errorMessages: errorMessages });
+          return;
         }
+        next();
       }
     );
   },
@@ -87,6 +86,7 @@ app.post('/signup', accountValidator,
 
 app.get('/login', (req, res) => {
   res.render('login.ejs');
+  // res.render('login.ejs', { errorMessages: errorMessages });
 });
 
 app.post('/login', accountValidator, (req, res) => {
@@ -94,38 +94,20 @@ app.post('/login', accountValidator, (req, res) => {
     'SELECT * FROM users WHERE username = ?',
     [req.body.username],
     (error, results) => {
-      if (results.length > 0) {
-        const hash = results[0].password;
-        bcrypt.compare(req.body.accountPassword, hash, (error, isEqual) => {
-          if (isEqual) {
-            req.session.userId = results[0].id;
-            req.session.username = results[0].username;
-            res.redirect('/');
-          } else {
-            res.redirect('/login');
-          }
-        });
-        return;
-      } else {
+      if (results.length === 0) {
         res.redirect('/login');
+        return;
       }
-      // results.length = 0で弾きたい処理を先に記述したほうが見通しが良くなりそう
-      // returnで意図通りの順序になるかは不明
-      // if (results.length > 0) {
-      //   const hash = results[0].password;
-      //   bcrypt.compare(req.body.accountPassword, hash, (error, isEqual) => {
-      //     if (isEqual) {
-      //       req.session.userId = results[0].id;
-      //       req.session.username = results[0].username;
-      //       res.redirect('/');
-      //     } else {
-      //       res.redirect('/login');
-      //     }
-      //   });
-      //   return;
-      // } else {
-      //   res.redirect('/login');
-      // }
+      const hash = results[0].password;
+      bcrypt.compare(req.body.accountPassword, hash, (error, isEqual) => {
+        if (!isEqual) {
+          res.redirect('/login');
+          return;
+        }
+        req.session.userId = results[0].id;
+        req.session.username = results[0].username;
+        res.redirect('/');
+      });
     }
   );
 });
