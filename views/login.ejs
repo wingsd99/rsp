@@ -10,6 +10,13 @@
   <!-- header -->
   <%- include('header') %>
   <h2>Log in</h2>
+  <% if (errorMessages.length > 0) { %>
+    <ul>
+      <% errorMessages.forEach(errorMessage => { %>
+        <li><%= errorMessage %></li>
+      <% }) %>
+    </ul>
+  <% } %>
   <form action="/login" method="post">
     <div class="set-username">
       <label>Username</label>

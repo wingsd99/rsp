@@ -27,6 +27,7 @@ console.log(`Room.rooms: ${JSON.stringify(Room.rooms)}`);
 app.get('/', (req, res) => {
   // 部屋に入室している人数とPWの有無を表示
   // roomInfoの初期値は[[0, 'No'], [0, 'No'], [0, 'No']]
+  // disconnectよりも先にroomInfoが返されるため、退出した本人がカウントされる
   const roomInfo = Room.rooms.map(room => {
     return [room.players.length, room.checkPasswordExists()];
   });
@@ -85,23 +86,25 @@ app.post('/signup', accountValidator,
 );
 
 app.get('/login', (req, res) => {
-  res.render('login.ejs');
-  // res.render('login.ejs', { errorMessages: errorMessages });
+  res.render('login.ejs', { errorMessages: [] });
 });
 
 app.post('/login', accountValidator, (req, res) => {
+  const errorMessages = [];
   connection.query(
     'SELECT * FROM users WHERE username = ?',
     [req.body.username],
     (error, results) => {
       if (results.length === 0) {
-        res.redirect('/login');
+        errorMessages.push('The username is not found');
+        res.render('login.ejs', { errorMessages: errorMessages });
         return;
       }
       const hash = results[0].password;
       bcrypt.compare(req.body.accountPassword, hash, (error, isEqual) => {
         if (!isEqual) {
-          res.redirect('/login');
+          errorMessages.push('The password is incorrect');
+          res.render('login.ejs', { errorMessages: errorMessages });
           return;
         }
         req.session.userId = results[0].id;
