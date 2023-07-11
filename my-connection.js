@@ -6,4 +6,5 @@ exports.connection = mysql.createConnection({
   user: 'root',
   password: process.env.DB_KEY,
   database: 'rsp_game'
+  // multipleStatements: true
 });

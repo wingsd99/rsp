@@ -56,7 +56,7 @@ app.post('/signup', accountValidator,
     const errorMessages = [];
     connection.query(
       'SELECT * FROM users WHERE username = ?',
-      // 疑問符プレースホルダを用いてエスケープ
+      // プレースホルダを用いてエスケープ
       [req.body.username],
       (error, results) => {
         if (results.length > 0) {
@@ -161,12 +161,15 @@ io.on('connection', (socket) => {
     room.players.push(player);
 
     if (socket.request.session.userId) {
-      // player.isLoggedIn = true;
-      console.log(`socket.request.session.userId: ${socket.request.session.userId}`);
+      player.sessionUserId = socket.request.session.userId;
+      console.log(`player.sessionUserId: ${player.sessionUserId}`);
     }
 
     // 入室したユーザの情報を表示
-    console.log(`Player join room: ${playerInfo[0] + 1}, player.id: ${player.id}, player.nickname: ${player.nickname}`);
+    console.log(
+      `Player join room: ${playerInfo[0] + 1},`,
+      `player.id: ${player.id}, player.nickname: ${player.nickname}`
+    );
 
     // 現在の部屋状況を入室者全員に伝える
     let msg = 'Ready for battle!';
@@ -194,25 +197,66 @@ io.on('connection', (socket) => {
         return !tmpPlayer.hand && tmpPlayer.nickname;
       }).filter(Boolean);
       room.players.forEach(tmpPlayer => {
-        io.to(tmpPlayer.id).emit('room-status', `Waiting other player's hand: player=${undecidedPlayers}`)
+        io.to(tmpPlayer.id).emit('room-status',
+          `Waiting other player's hand: player=${undecidedPlayers}`)
       });
       // このreturnはplayer-selectイベントを抜ける
       return;
     }
 
-    // 全員の手が出揃ったら判定
-    // 重複のない手の一覧を取得
-    const handsList = room.getHandsList();
-    room.players.map(tmpPlayer => {
-      const result = [
-        tmpPlayer.judgeHand(handsList),
-        room.players.map(elm => [elm.nickname, elm.hand])
-      ];
-      io.to(tmpPlayer.id).emit('room-status', 'Battle finished!');
-      io.to(tmpPlayer.id).emit('matchResult', result);
-    });
-    // 判定後は全員の手をリセット
-    room.players.map(tmpPlayer => tmpPlayer.hand = '');
+    // 後日class設計のファイルへ移動予定
+    const createMatchId = async () => {
+      const resultFromDB = await new Promise((resolve, reject) => {
+        connection.query(
+          'SELECT MAX(match_id) + 1 AS newMatchId FROM matches',
+          (error, results) => {
+            if (error) reject(`error: ${error}`);
+            resolve(results[0].newMatchId);
+          }
+        );
+      }).catch(() => console.log('error1'));
+      return resultFromDB;
+    };
+
+    const insertResultIntoMatches = async (matchResult) => {
+      const resultFromDB = await new Promise((resolve, reject) => {
+        connection.query(
+          'INSERT INTO matches (match_id, user_id, nickname, hand, result) VALUES ?',
+          [matchResult],
+          (error, results) => {
+            if (error) reject(`error: ${error}`);
+            resolve(results);
+          }
+        );
+      }).catch(() => console.log('error2'));
+      return resultFromDB;
+    };
+
+    // 全員の手が出揃ったら判定 & 試合結果をINSERT
+    (async () => {
+      const matchId = await createMatchId();
+      const matchResult = [];
+      room.players.forEach(tmpPlayer => {
+        const resultToPlayer = [
+          // room.getHandsList()で重複のない手の一覧を取得
+          tmpPlayer.judgeHand(room.getHandsList()),
+          room.players.map(elm => [elm.nickname, elm.hand])
+        ];
+        io.to(tmpPlayer.id).emit('room-status', 'Battle finished!');
+        io.to(tmpPlayer.id).emit('matchFinish', resultToPlayer);
+        matchResult.push([
+          matchId,
+          tmpPlayer.sessionUserId || 1,
+          tmpPlayer.nickname,
+          tmpPlayer.hand,
+          tmpPlayer.judgeHand(room.getHandsList())
+        ]);
+        console.log(`matchResultB: ${matchResult}`);
+      });
+      await insertResultIntoMatches(matchResult);
+      // 判定後は全員の手をリセット
+      room.players.map(tmpPlayer => tmpPlayer.hand = '');
+    })();
   });
   
   socket.on('next-game', (roomId) => {

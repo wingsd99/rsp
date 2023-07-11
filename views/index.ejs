@@ -88,7 +88,7 @@
         roomStatus.innerHTML = msg;
       });
       
-      socket.on("matchResult", (res) => {
+      socket.on("matchFinish", (res) => {
         yourResult.innerHTML = `Result: <span>${res[0]}</span>`;
         // 例: 1番目に入室した人はplayerHands[0]だからPlayer1になる
         playerHands.innerHTML = res[1].map(elm => {
