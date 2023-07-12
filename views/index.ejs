@@ -95,17 +95,18 @@
           return `${elm[0]}'s hand: ${elm[1]}`;
         }).join("<br />");
 
-        if (res[0] === "DRAW") {
-          yourResultImage.src = "/image/draw.png";
-          yourResultImage.alt = "draw.png";
-        }
-        if (res[0] === "LOSE") {
-          yourResultImage.src = "/image/lose.png";
-          yourResultImage.alt = "lose.png";
-        };
-        if (res[0] === "WIN") {
-          yourResultImage.src = "/image/win.png";
-          yourResultImage.alt = "win.png";
+        switch (res[0]) {
+          case "DRAW" :
+            yourResultImage.src = "/image/draw.png";
+            yourResultImage.alt = "draw.png";
+            break;
+          case "LOSE" :
+            yourResultImage.src = "/image/lose.png";
+            yourResultImage.alt = "lose.png";
+            break;
+          case "WIN" :
+            yourResultImage.src = "/image/win.png";
+            yourResultImage.alt = "win.png";
         }
 
         player.style.visibility = "hidden";

@@ -214,25 +214,27 @@ io.on('connection', (socket) => {
             resolve(results[0].newMatchId);
           }
         );
-      }).catch(() => console.log('error1'));
+      }).catch(() => console.log('createMatchId error'));
       return resultFromDB;
     };
 
     const insertResultIntoMatches = async (matchResult) => {
       const resultFromDB = await new Promise((resolve, reject) => {
         connection.query(
-          'INSERT INTO matches (match_id, user_id, nickname, hand, result) VALUES ?',
+          'INSERT INTO matches (match_id, user_id, nickname, hand, result) VALUES (?)',
           [matchResult],
           (error, results) => {
             if (error) reject(`error: ${error}`);
+            console.log(`matchResult: ${matchResult}`);
             resolve(results);
           }
         );
-      }).catch(() => console.log('error2'));
+      }).catch(() => console.log('insertResultIntoMatches error'));
       return resultFromDB;
     };
 
     // 全員の手が出揃ったら判定 & 試合結果をINSERT
+    // APとDBの処理を明確に切り分ける設計思想もある
     (async () => {
       const matchId = await createMatchId();
       const matchResult = [];
@@ -251,7 +253,6 @@ io.on('connection', (socket) => {
           tmpPlayer.hand,
           tmpPlayer.judgeHand(room.getHandsList())
         ]);
-        console.log(`matchResultB: ${matchResult}`);
       });
       await insertResultIntoMatches(matchResult);
       // 判定後は全員の手をリセット
