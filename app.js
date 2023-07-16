@@ -13,9 +13,16 @@ app.use(express.urlencoded({ extended: true }));
 
 const Room = require('./my-room.js');
 const Player = require('./my-player.js');
-const { connection } = require('./my-connection.js');
 const { roomValidator, accountValidator } = require('./my-validator.js');
 const { session, checkSession, wrap } = require('./my-session.js');
+const {
+  connection,
+  beginTransactionWithPromise,
+  decideNewMatchIdWithPromise,
+  insertResultWithPromise,
+  commitWithPromise,
+  rollbackWithPromise
+} = require('./my-connection.js');
 
 app.use(session);
 app.use(checkSession);
@@ -25,6 +32,23 @@ Room.rooms = Room.rooms.map(room => room = new Room());
 console.log(`Room.rooms: ${JSON.stringify(Room.rooms)}`);
 
 app.get('/', (req, res) => {
+
+  // 開発用
+  // (async () => {
+  //   const aaa = await decideNewMatchIdWithPromise(connection);
+  //   console.log(aaa);
+  // })().catch((error) => console.log(error));
+  // const bbb = ['xxx', 'yyy'];
+  // const aaa = bbb.map(elm => {
+  //   return ([
+  //     '000',
+  //     '111',
+  //     '222'
+  //   ]);
+  // });
+  // console.log('---bbb---');
+  // console.log(aaa);
+
   // 部屋に入室している人数とPWの有無を表示
   // roomInfoの初期値は[[0, 'No'], [0, 'No'], [0, 'No']]
   // disconnectよりも先にroomInfoが返されるため、退出した本人がカウントされる
@@ -204,60 +228,39 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // 後日class設計のファイルへ移動予定
-    const createMatchId = async () => {
-      const resultFromDB = await new Promise((resolve, reject) => {
-        connection.query(
-          'SELECT MAX(match_id) + 1 AS newMatchId FROM matches',
-          (error, results) => {
-            if (error) reject(`error: ${error}`);
-            resolve(results[0].newMatchId);
-          }
-        );
-      }).catch(() => console.log('createMatchId error'));
-      return resultFromDB;
-    };
-
-    const insertResultIntoMatches = async (matchResult) => {
-      const resultFromDB = await new Promise((resolve, reject) => {
-        connection.query(
-          'INSERT INTO matches (match_id, user_id, nickname, hand, result) VALUES (?)',
-          [matchResult],
-          (error, results) => {
-            if (error) reject(`error: ${error}`);
-            console.log(`matchResult: ${matchResult}`);
-            resolve(results);
-          }
-        );
-      }).catch(() => console.log('insertResultIntoMatches error'));
-      return resultFromDB;
-    };
-
-    // 全員の手が出揃ったら判定 & 試合結果をINSERT
-    // APとDBの処理を明確に切り分ける設計思想もある
     (async () => {
-      const matchId = await createMatchId();
-      const matchResult = [];
+      // 試合結果をクライアントへ送信
       room.players.forEach(tmpPlayer => {
-        const resultToPlayer = [
+        const resultToPlayers = [
           // room.getHandsList()で重複のない手の一覧を取得
           tmpPlayer.judgeHand(room.getHandsList()),
           room.players.map(elm => [elm.nickname, elm.hand])
         ];
         io.to(tmpPlayer.id).emit('room-status', 'Battle finished!');
-        io.to(tmpPlayer.id).emit('matchFinish', resultToPlayer);
-        matchResult.push([
-          matchId,
-          tmpPlayer.sessionUserId || 1,
-          tmpPlayer.nickname,
-          tmpPlayer.hand,
-          tmpPlayer.judgeHand(room.getHandsList())
-        ]);
+        io.to(tmpPlayer.id).emit('matchFinish', resultToPlayers);
       });
-      await insertResultIntoMatches(matchResult);
-      // 判定後は全員の手をリセット
-      room.players.map(tmpPlayer => tmpPlayer.hand = '');
-    })();
+
+      // 試合結果をmatchesテーブルへINSERT
+      try {
+        await beginTransactionWithPromise(connection);
+        const matchId = await decideNewMatchIdWithPromise(connection);
+        const matchResult = room.players.map(tmpPlayer => {
+          return ([
+            matchId,
+            tmpPlayer.sessionUserId || 1,
+            tmpPlayer.nickname,
+            tmpPlayer.hand,
+            tmpPlayer.judgeHand(room.getHandsList())
+          ]);
+        });
+        await insertResultWithPromise(connection, matchResult);
+        await commitWithPromise(connection);
+      } catch (error) {
+        await rollbackWithPromise(connection, error);
+      } finally {
+        room.players.map(tmpPlayer => tmpPlayer.hand = '');
+      }
+    })().catch(error => console.log(error));
   });
   
   socket.on('next-game', (roomId) => {
