@@ -46,7 +46,7 @@ exports.insertResultWithPromise = (connection, matchResult) => {
     connection.query(
       'INSERT INTO matches (match_id, user_id, nickname, hand, result) VALUES ?',
       [matchResult],
-      (error, results) => {
+      (error) => {
         if (error) {
           reject(error);
           console.log('---insertResultWithPromise error---');

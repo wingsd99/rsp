@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/css/style.css">
+  <title>rsp-game</title>
+</head>
+<body>
+  <!-- header -->
+  <%- include('header') %>
+  <div class="main">
+    <!-- recordsの数を制限すれば表示する試合数を決められる -->
+    <% records.forEach(record => { %>
+      <li>
+        <% record.forEach((elm, index) => { %>
+          <% if (index === 0) { %>
+            <%= record[0] %> &emsp;
+          <% } else { %>
+            VS <%= record[index] %>
+          <% } %>
+        <% }) %>
+      </li>
+    <% }) %>
+  </div>
+</body>
+</html>

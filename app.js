@@ -32,7 +32,6 @@ Room.rooms = Room.rooms.map(room => room = new Room());
 console.log(`Room.rooms: ${JSON.stringify(Room.rooms)}`);
 
 app.get('/', (req, res) => {
-
   // 開発用
   // (async () => {
   //   const aaa = await decideNewMatchIdWithPromise(connection);
@@ -80,7 +79,6 @@ app.post('/signup', accountValidator,
     const errorMessages = [];
     connection.query(
       'SELECT * FROM users WHERE username = ?',
-      // プレースホルダを用いてエスケープ
       [req.body.username],
       (error, results) => {
         if (results.length > 0) {
@@ -143,6 +141,52 @@ app.get('/logout', (req, res) => {
   req.session.destroy((_error) => {
     res.redirect('/');
   });
+});
+
+app.get('/record', (req, res) => {
+  if (!req.session.userId) {
+    res.redirect('/');
+    return;
+  }
+  
+  (async () => {
+    // 後日my-connection.jsへ移動予定
+    const recordsFromDB = await (() => {
+      return new Promise((resolve, reject) => {
+        connection.query(
+          'SELECT * FROM matches WHERE match_id IN (\
+            SELECT match_id FROM matches WHERE user_id = ?\
+          )',
+          [req.session.userId],
+          (error, results) => {
+            if (error) {
+              reject(error);
+              console.log('---xxx error---');
+              console.log(error);
+              return;
+            }
+            resolve(results);
+          }
+        );
+      });
+    })();
+
+    const records = [];
+    recordsFromDB.map(record => {
+      if (!records[record.match_id]) {
+        // (match_id)番目の要素に配列を作成
+        // records1[record.match_id].push ~ はエラーになる
+        records[record.match_id] = [];
+      }
+      if (record.user_id === req.session.userId) {
+        records[record.match_id].unshift(record.result);
+      } else {
+        records[record.match_id].push(record.nickname);
+      }
+    });
+    records.filter(Boolean);
+    res.render('record.ejs', { records: records });
+  })();
 });
 
 app.post('/index', roomValidator, (req, res) => {

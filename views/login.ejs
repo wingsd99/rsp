@@ -39,12 +39,10 @@
   const accountPassword = document.querySelector(".account-password");
   const logIn = document.querySelector(".log-in");
 
-  checkInputValue = () => {
-    if (username.value) {
-      if (accountPassword.value.length > 3) {
-        logIn.disabled = false;
-        return;
-      }
+  const checkInputValue = () => {
+    if (username.value && (accountPassword.value.length > 3)) {
+      logIn.disabled = false;
+      return;
     }
     logIn.disabled = true;
   };
