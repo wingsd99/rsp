@@ -154,12 +154,12 @@ app.get('/record', (req, res) => {
     const records = [];
     recordsFromDB.forEach(record => {
       if (!records[record.match_id]) {
-        // (match_id)番目の要素に配列を作成
+        // 添字<match_id>番の要素に配列を作成
         // records1[record.match_id].push ~ はエラーになる
         records[record.match_id] = [];
       }
       if (record.user_id === req.session.userId) {
-        records[record.match_id].unshift(record.result);
+        records[record.match_id].unshift([record.result, record.hand]);
       } else {
         records[record.match_id].push(record.nickname);
       }
