@@ -9,6 +9,26 @@ exports.connection = mysql.createConnection({
   // multipleStatements: true
 });
 
+exports.getMatchRecordsWithPromise = (connection, req) => {
+  return new Promise((resolve, reject) => {
+    connection.query(
+      'SELECT * FROM matches WHERE match_id IN (\
+        SELECT match_id FROM matches WHERE user_id = ?\
+      )',
+      [req.session.userId],
+      (error, results) => {
+        if (error) {
+          reject(error);
+          console.log('---selectMatchRecordsWithPromise error---');
+          console.log(error);
+          return;
+        }
+        resolve(results);
+      }
+    );
+  });
+};
+
 exports.beginTransactionWithPromise = connection => {
   return new Promise((resolve, reject) => {
     connection.beginTransaction(error => {

@@ -17,6 +17,7 @@ const { roomValidator, accountValidator } = require('./my-validator.js');
 const { session, checkSession, wrap } = require('./my-session.js');
 const {
   connection,
+  getMatchRecordsWithPromise,
   beginTransactionWithPromise,
   decideNewMatchIdWithPromise,
   insertResultWithPromise,
@@ -32,7 +33,7 @@ Room.rooms = Room.rooms.map(room => room = new Room());
 console.log(`Room.rooms: ${JSON.stringify(Room.rooms)}`);
 
 app.get('/', (req, res) => {
-  // 開発用
+  // 開発用にこの部分を残しておく
   // (async () => {
   //   const aaa = await decideNewMatchIdWithPromise(connection);
   //   console.log(aaa);
@@ -148,31 +149,10 @@ app.get('/record', (req, res) => {
     res.redirect('/');
     return;
   }
-  
   (async () => {
-    // 後日my-connection.jsへ移動予定
-    const recordsFromDB = await (() => {
-      return new Promise((resolve, reject) => {
-        connection.query(
-          'SELECT * FROM matches WHERE match_id IN (\
-            SELECT match_id FROM matches WHERE user_id = ?\
-          )',
-          [req.session.userId],
-          (error, results) => {
-            if (error) {
-              reject(error);
-              console.log('---xxx error---');
-              console.log(error);
-              return;
-            }
-            resolve(results);
-          }
-        );
-      });
-    })();
-
+    const recordsFromDB = await getMatchRecordsWithPromise(connection, req);
     const records = [];
-    recordsFromDB.map(record => {
+    recordsFromDB.forEach(record => {
       if (!records[record.match_id]) {
         // (match_id)番目の要素に配列を作成
         // records1[record.match_id].push ~ はエラーになる
