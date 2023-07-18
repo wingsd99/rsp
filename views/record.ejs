@@ -12,13 +12,28 @@
   <%- include('header') %>
   <div class="main">
     <!-- recordsの数を制限すれば表示する試合数を決められる -->
+    <% const handsCount = [0, 0, 0] %>
+    <% records.forEach(record => { %>
+      <% if (record[0][1] === "Rock") handsCount[0]++ %>
+      <% if (record[0][1] === "Scissors") handsCount[1]++ %>
+      <% if (record[0][1] === "Paper") handsCount[2]++ %>
+    <% }) %>
+    <% const totalHandsCount = handsCount[0] + handsCount[1] + handsCount[2] %>
+    <div>
+      Rock: <%= handsCount[0] %> (<%= (handsCount[0] / totalHandsCount * 100).toFixed(2) %>%) &emsp;
+      Scissors: <%= handsCount[1] %> (<%= (handsCount[1] / totalHandsCount * 100).toFixed(2) %>%) &emsp;
+      Paper: <%= handsCount[2] %> (<%= (handsCount[2] / totalHandsCount * 100).toFixed(2) %>%) &emsp;
+    </div>
+    <div>
+
+    </div>
     <% records.forEach(record => { %>
       <li>
         <% record.forEach((elm, index) => { %>
           <% if (index === 0) { %>
-            <%= record[0][0] %> (hand: <%= record[0][1] %>) &emsp;
+            <%= elm[0] %> (hand: <%= elm[1] %>) &emsp;
           <% } else { %>
-            VS <%= record[index] %>
+            VS <%= elm %>
           <% } %>
         <% }) %>
       </li>
