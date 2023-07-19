@@ -44,36 +44,27 @@ exports.beginTransactionWithPromise = connection => {
   });
 };
 
-exports.decideNewMatchIdWithPromise = connection => {
+exports.insertResultWithPromise = (connection, matchResults) => {
+  // バルクインサート・プレースホルダ・サブクエリを同時に利用するために、
+  // クエリを分割して動的に生成する
+  const statement = 'INSERT INTO matches\
+    (match_id, user_id, nickname, hand, result) VALUES ';
+  const placeHolder = matchResults.map((_result, index) => {
+    return `((SELECT max_match_id + 1 FROM (SELECT MAX(match_id) \
+      AS max_match_id FROM matches) AS tmp_table) - ${index}, ?)`;
+  }).join(',');
   return new Promise((resolve, reject) => {
     connection.query(
-      'SELECT MAX(match_id) + 1 AS newMatchId FROM matches',
-      (error, results) => {
-        if (error) {
-          reject(error);
-          console.log('---decideNewMatchIdWithPromise error---');
-          console.log(error);
-          return;
-        }
-        resolve(results[0].newMatchId);
-      }
-    );
-  });
-};
-
-exports.insertResultWithPromise = (connection, matchResult) => {
-  return new Promise((resolve, reject) => {
-    connection.query(
-      'INSERT INTO matches (match_id, user_id, nickname, hand, result) VALUES ?',
-      [matchResult],
+      statement + placeHolder,
+      [...matchResults],
       (error) => {
         if (error) {
           reject(error);
-          console.log('---insertResultWithPromise error---');
-          console.log(error);
+          console.log('---insertResultWithPromise error---\n', error);
           return;
         }
         resolve();
+        console.log('---matchResults---\n', matchResults);
       }
     );
   });

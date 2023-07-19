@@ -19,7 +19,6 @@ const {
   connection,
   getMatchRecordsWithPromise,
   beginTransactionWithPromise,
-  decideNewMatchIdWithPromise,
   insertResultWithPromise,
   commitWithPromise,
   rollbackWithPromise
@@ -34,20 +33,30 @@ console.log(`Room.rooms: ${JSON.stringify(Room.rooms)}`);
 
 app.get('/', (req, res) => {
   // 開発用にこの部分を残しておく
+  // const matchResults = [
+  //   [1, 'q', 'Rock', 'WIN'],
+  //   [1, 'w', 'Scissors', 'LOSE']
+  // ];
+  // console.log('---...matchResults---\n', ...matchResults);
+  // const placeHolder = matchResults.map((_result, index) => {
+  //   return `((SELECT max_match_id + 1 FROM (SELECT MAX(match_id) AS max_match_id FROM matches) AS tmp_table) - ${index}, ?)`;
+  // }).join(',');
+  // console.log('---placeHolder---\n', placeHolder);
+
   // (async () => {
-  //   const aaa = await decideNewMatchIdWithPromise(connection);
+  //   const matchResults = [
+  //     [1, 'testA', 'Rock', 'WIN'],
+  //     [1, 'testB', 'Scissors', 'LOSE']
+  //   ];
+  //   const aaa = await insertResultWithPromise(connection, matchResults);
   //   console.log(aaa);
   // })().catch((error) => console.log(error));
+
   // const bbb = ['xxx', 'yyy'];
-  // const aaa = bbb.map(elm => {
-  //   return ([
-  //     '000',
-  //     '111',
-  //     '222'
-  //   ]);
+  // const aaa = bbb.map((elm, index) => {
+  //   return index;
   // });
-  // console.log('---bbb---');
-  // console.log(aaa);
+  // console.log('---aaa---\n', aaa);
 
   // 部屋に入室している人数とPWの有無を表示
   // roomInfoの初期値は[[0, 'No'], [0, 'No'], [0, 'No']]
@@ -267,17 +276,15 @@ io.on('connection', (socket) => {
       // 試合結果をmatchesテーブルへINSERT
       try {
         await beginTransactionWithPromise(connection);
-        const matchId = await decideNewMatchIdWithPromise(connection);
-        const matchResult = room.players.map(tmpPlayer => {
+        const matchResults = room.players.map(tmpPlayer => {
           return ([
-            matchId,
             tmpPlayer.sessionUserId || 1,
             tmpPlayer.nickname,
             tmpPlayer.hand,
             tmpPlayer.judgeHand(room.getHandsList())
           ]);
         });
-        await insertResultWithPromise(connection, matchResult);
+        await insertResultWithPromise(connection, matchResults);
         await commitWithPromise(connection);
       } catch (error) {
         await rollbackWithPromise(connection, error);
