@@ -15,14 +15,7 @@ const Room = require('./my-room.js');
 const Player = require('./my-player.js');
 const { roomValidator, accountValidator } = require('./my-validator.js');
 const { session, checkSession, wrap } = require('./my-session.js');
-const {
-  connection,
-  getMatchRecordsWithPromise,
-  beginTransactionWithPromise,
-  insertResultWithPromise,
-  commitWithPromise,
-  rollbackWithPromise
-} = require('./my-connection.js');
+const con = require('./my-connection.js');
 
 app.use(session);
 app.use(checkSession);
@@ -31,7 +24,7 @@ io.use(wrap(session));
 Room.rooms = Room.rooms.map(room => room = new Room());
 console.log(`Room.rooms: ${JSON.stringify(Room.rooms)}`);
 
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
   // 開発用にこの部分を残しておく
   // const matchResults = [
   //   [1, 'q', 'Rock', 'WIN'],
@@ -48,7 +41,7 @@ app.get('/', (req, res) => {
   //     [1, 'testA', 'Rock', 'WIN'],
   //     [1, 'testB', 'Scissors', 'LOSE']
   //   ];
-  //   const aaa = await insertResultWithPromise(connection, matchResults);
+  //   const aaa = await con.insertResult(con.connection, matchResults);
   //   console.log(aaa);
   // })().catch((error) => console.log(error));
 
@@ -84,36 +77,23 @@ app.post('/signup', accountValidator,
     }
     next();
   },
-  // usernameの重複チェック
-  (req, res, next) => {
-    const errorMessages = [];
-    connection.query(
-      'SELECT * FROM users WHERE username = ?',
-      [req.body.username],
-      (error, results) => {
-        if (results.length > 0) {
-          errorMessages.push('The username is already taken');
-          res.render('signup.ejs', { errorMessages: errorMessages });
-          return;
-        }
-        next();
-      }
-    );
-  },
-  // アカウントの登録
+  // usernameの重複チェック & アカウントの登録
   (req, res) => {
-    bcrypt.hash(req.body.accountPassword, 10, (error, hash) => {
-      connection.query(
-        'INSERT INTO users (username, password) VALUES (?, ?)',
-        [req.body.username, hash],
-        (error, results) => {
-          console.log(`INSERT results: ${JSON.stringify(results)}`);
-          req.session.userId = results.insertId;
-          req.session.username = req.body.username;
-          res.redirect('/');
-        }
-      );
-    });
+    (async () => {
+      await con.beginTransaction(con.connection);
+      const results = await con.tryRegisterUser(con.connection, req, bcrypt);
+      req.session.userId = results.insertId;
+      req.session.username = req.body.username;
+      res.redirect('/');
+      con.commit(con.connection);
+    })().catch(() => {
+      // 基本的にtryResisterUserのINSERTが失敗したときに以下の処理に進む
+      console.log('---failed tryRegisterUser & rollback---');
+      con.connection.rollback();
+      res.render('signup.ejs', {
+        errorMessages: ['The username is already taken']
+      });
+    }); 
   }
 );
 
@@ -123,7 +103,7 @@ app.get('/login', (req, res) => {
 
 app.post('/login', accountValidator, (req, res) => {
   const errorMessages = [];
-  connection.query(
+  con.connection.query(
     'SELECT * FROM users WHERE username = ?',
     [req.body.username],
     (error, results) => {
@@ -159,7 +139,7 @@ app.get('/record', (req, res) => {
     return;
   }
   (async () => {
-    const recordsFromDB = await getMatchRecordsWithPromise(connection, req);
+    const recordsFromDB = await con.fetchMatchRecords(con.connection, req);
     const records = [];
     recordsFromDB.forEach(record => {
       if (!records[record.match_id]) {
@@ -175,7 +155,10 @@ app.get('/record', (req, res) => {
     });
     records.filter(Boolean);
     res.render('record.ejs', { records: records });
-  })();
+  })().catch(error => {
+    console.log(error);
+    res.redirect('/');
+  });
 });
 
 app.post('/index', roomValidator, (req, res) => {
@@ -275,19 +258,21 @@ io.on('connection', (socket) => {
 
       // 試合結果をmatchesテーブルへINSERT
       try {
-        await beginTransactionWithPromise(connection);
+        await con.beginTransaction(con.connection);
+        const newMatchId = await con.decideNewMatchId(con.connection);
         const matchResults = room.players.map(tmpPlayer => {
           return ([
+            newMatchId,
             tmpPlayer.sessionUserId || 1,
             tmpPlayer.nickname,
             tmpPlayer.hand,
             tmpPlayer.judgeHand(room.getHandsList())
           ]);
         });
-        await insertResultWithPromise(connection, matchResults);
-        await commitWithPromise(connection);
+        await con.insertMatchResults(con.connection, matchResults);
+        await con.commit(con.connection);
       } catch (error) {
-        await rollbackWithPromise(connection, error);
+        await con.rollback(con.connection, error);
       } finally {
         room.players.map(tmpPlayer => tmpPlayer.hand = '');
       }

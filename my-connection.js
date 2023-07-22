@@ -9,27 +9,7 @@ exports.connection = mysql.createConnection({
   // multipleStatements: true
 });
 
-exports.getMatchRecordsWithPromise = (connection, req) => {
-  return new Promise((resolve, reject) => {
-    connection.query(
-      'SELECT * FROM matches WHERE match_id IN (\
-        SELECT match_id FROM matches WHERE user_id = ?\
-      )',
-      [req.session.userId],
-      (error, results) => {
-        if (error) {
-          reject(error);
-          console.log('---selectMatchRecordsWithPromise error---');
-          console.log(error);
-          return;
-        }
-        resolve(results);
-      }
-    );
-  });
-};
-
-exports.beginTransactionWithPromise = connection => {
+exports.beginTransaction = connection => {
   return new Promise((resolve, reject) => {
     connection.beginTransaction(error => {
       if (error) {
@@ -44,38 +24,12 @@ exports.beginTransactionWithPromise = connection => {
   });
 };
 
-exports.insertResultWithPromise = (connection, matchResults) => {
-  // バルクインサート・プレースホルダ・サブクエリを同時に利用するために、
-  // クエリを分割して動的に生成する
-  const statement = 'INSERT INTO matches\
-    (match_id, user_id, nickname, hand, result) VALUES ';
-  const placeHolder = matchResults.map((_result, index) => {
-    return `((SELECT max_match_id + 1 FROM (SELECT MAX(match_id) \
-      AS max_match_id FROM matches) AS tmp_table) - ${index}, ?)`;
-  }).join(',');
-  return new Promise((resolve, reject) => {
-    connection.query(
-      statement + placeHolder,
-      [...matchResults],
-      (error) => {
-        if (error) {
-          reject(error);
-          console.log('---insertResultWithPromise error---\n', error);
-          return;
-        }
-        resolve();
-        console.log('---matchResults---\n', matchResults);
-      }
-    );
-  });
-};
-
-exports.commitWithPromise = connection => {
+exports.commit = connection => {
   return new Promise((resolve, reject) => {
     connection.commit(error => {
       if (error) {
         reject(error);
-        console.log('---commitWithPromise error---');
+        console.log('---commit error---');
         console.log(error);
         return;
       }
@@ -85,11 +39,81 @@ exports.commitWithPromise = connection => {
   });
 };
 
-exports.rollbackWithPromise = (connection, error) => {
+exports.rollback = (connection, error) => {
   return new Promise((resolve, reject) => {
     connection.rollback(() => {
       reject(error);
       console.log('rollback');
     });
+  });
+};
+
+exports.tryRegisterUser = (connection, req, bcrypt) => {
+  return new Promise((resolve, reject) => {
+    bcrypt.hash(req.body.accountPassword, 10, (error, hash) => {
+      connection.query(
+        'INSERT INTO users (username, password) VALUES (?, ?)',
+        [req.body.username, hash],
+        (error, results) => {
+          if (error) {
+            return reject('not OK');
+          }
+          resolve(results);
+        }
+      );
+    });
+  }).catch(error => {throw Error(error)});
+};
+
+exports.fetchMatchRecords = (connection, req) => {
+  return new Promise((resolve, reject) => {
+    connection.query(
+      'SELECT * FROM matches WHERE match_id IN (\
+        SELECT match_id FROM matches WHERE user_id = ?\
+      )',
+      [req.session.userId],
+      (error, results) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(results);
+      }
+    );
+  });
+};
+
+exports.decideNewMatchId = connection => {
+  return new Promise((resolve, reject) => {
+    connection.query(
+      'SELECT MAX(match_id) + 1 AS newMatchId FROM matches FOR UPDATE',
+      (error, results) => {
+        if (error) {
+          reject(error);
+          console.log('---decideNewMatchIdWithPromise error---');
+          console.log(error);
+          return;
+        }
+        resolve(results[0].newMatchId);
+      }
+    );
+  });
+};
+
+exports.insertMatchResults = (connection, matchResults) => {
+  return new Promise((resolve, reject) => {
+    connection.query(
+      'INSERT INTO matches (match_id, user_id, nickname, hand, result) VALUES ?',
+      [matchResults],
+      (error, results) => {
+        if (error) {
+          reject(error);
+          console.log('---insertResultWithPromise error---');
+          console.log(error);
+          return;
+        }
+        resolve();
+      }
+    );
   });
 };

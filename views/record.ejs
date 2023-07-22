@@ -20,6 +20,7 @@
     <% }) %>
     <% const totalHandsCount = handsCount[0] + handsCount[1] + handsCount[2] %>
     <div>
+      <!-- Rのパイプ演算子(%>%)ではなくejsの閉じタグ(%>)とパーセンテージ(%)の複合 -->
       Rock: <%= handsCount[0] %> (<%= (handsCount[0] / totalHandsCount * 100).toFixed(2) %>%) &emsp;
       Scissors: <%= handsCount[1] %> (<%= (handsCount[1] / totalHandsCount * 100).toFixed(2) %>%) &emsp;
       Paper: <%= handsCount[2] %> (<%= (handsCount[2] / totalHandsCount * 100).toFixed(2) %>%) &emsp;
