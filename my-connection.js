@@ -54,15 +54,27 @@ exports.tryRegisterUser = (connection, req, bcrypt) => {
       connection.query(
         'INSERT INTO users (username, password) VALUES (?, ?)',
         [req.body.username, hash],
-        (error, results) => {
-          if (error) {
-            return reject('not OK');
-          }
-          resolve(results);
-        }
+        (error, results) => error ? reject(error) : resolve(results)
       );
     });
-  }).catch(error => {throw Error(error)});
+  });
+};
+
+exports.authenticateUser = (connection, req, bcrypt) => {
+  return new Promise((resolve, reject) => {
+    connection.query(
+      'SELECT * FROM users WHERE username = ?',
+      [req.body.username],
+      (error, results) => {
+        if (!results.length) return reject();
+        const pass = req.body.accountPassword;
+        const hash = results[0].password;
+        bcrypt.compare(pass, hash, (error, isEqual) => {
+          isEqual ? resolve(results) : reject();
+        });
+      }
+    );
+  });
 };
 
 exports.fetchMatchRecords = (connection, req) => {
@@ -72,13 +84,7 @@ exports.fetchMatchRecords = (connection, req) => {
         SELECT match_id FROM matches WHERE user_id = ?\
       )',
       [req.session.userId],
-      (error, results) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-        resolve(results);
-      }
+      (error, results) => error ? reject(error) : resolve(results)
     );
   });
 };
@@ -105,7 +111,7 @@ exports.insertMatchResults = (connection, matchResults) => {
     connection.query(
       'INSERT INTO matches (match_id, user_id, nickname, hand, result) VALUES ?',
       [matchResults],
-      (error, results) => {
+      (error) => {
         if (error) {
           reject(error);
           console.log('---insertResultWithPromise error---');

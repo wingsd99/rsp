@@ -86,14 +86,14 @@ app.post('/signup', accountValidator,
       req.session.username = req.body.username;
       res.redirect('/');
       con.commit(con.connection);
-    })().catch(() => {
+    })().catch(error => {
       // 基本的にtryResisterUserのINSERTが失敗したときに以下の処理に進む
       console.log('---failed tryRegisterUser & rollback---');
       con.connection.rollback();
       res.render('signup.ejs', {
         errorMessages: ['The username is already taken']
       });
-    }); 
+    });
   }
 );
 
@@ -102,33 +102,21 @@ app.get('/login', (req, res) => {
 });
 
 app.post('/login', accountValidator, (req, res) => {
-  const errorMessages = [];
-  con.connection.query(
-    'SELECT * FROM users WHERE username = ?',
-    [req.body.username],
-    (error, results) => {
-      if (results.length === 0) {
-        errorMessages.push('The username is not found');
-        res.render('login.ejs', { errorMessages: errorMessages });
-        return;
-      }
-      const hash = results[0].password;
-      bcrypt.compare(req.body.accountPassword, hash, (error, isEqual) => {
-        if (!isEqual) {
-          errorMessages.push('The password is incorrect');
-          res.render('login.ejs', { errorMessages: errorMessages });
-          return;
-        }
-        req.session.userId = results[0].id;
-        req.session.username = results[0].username;
-        res.redirect('/');
-      });
-    }
-  );
+  (async () => {
+    const results = await con.authenticateUser(con.connection, req, bcrypt);
+    req.session.userId = results[0].id;
+    req.session.username = results[0].username;
+    res.redirect('/');
+  })().catch(() => {
+    console.log('---failed authenticateUser---');
+    res.render('login.ejs', {
+      errorMessages: ['Either the username or password is incorrect']
+    });
+  });
 });
 
 app.get('/logout', (req, res) => {
-  req.session.destroy((_error) => {
+  req.session.destroy((error) => {
     res.redirect('/');
   });
 });
@@ -292,7 +280,7 @@ io.on('connection', (socket) => {
   });
 
   // クライアントとのWS通信が切れた際の処理
-  socket.on('disconnecting', (_reason) => {
+  socket.on('disconnecting', (reason) => {
     // socket.idから部屋の番号を取得
     const room = Room.getRoomContainsPlayer(socket.id);
     room.exitPlayer(socket.id);
