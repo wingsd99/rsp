@@ -186,8 +186,7 @@ app.get('/record', (req, res) => {
         records[record.match_id].push(record.nickname);
       }
     });
-    records.filter(Boolean);
-    res.render('record.ejs', { records: records });
+    res.render('record.ejs', { records: records.filter(Boolean) });
   })().catch(error => {
     console.log(error);
     res.redirect('/');
