@@ -70,8 +70,7 @@ exports.authenticateUser = (connection, req, bcrypt) => {
         bcrypt.compare(
           req.body.accountPassword,
           results[0].password,
-          // (error, isEqual) => isEqual ? resolve(results) : reject()
-          (error, isEqual) => isEqual ? resolve(results) : reject(error, results)
+          (error, isEqual) => isEqual ? resolve(results) : reject()
         );
       }
     );
