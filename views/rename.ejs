@@ -9,7 +9,7 @@
 <body>
   <!-- header -->
   <%- include('header') %>
-  <h2>Sign up</h2>
+  <h2>Rename</h2>
   <% if (errorMessages.length > 0) { %>
     <ul>
       <% errorMessages.forEach(errorMessage => { %>
@@ -17,7 +17,7 @@
       <% }) %>
     </ul>
   <% } %>
-  <form action="/signup" method="post">
+  <form action="/rename" method="post">
     <div class="set-username">
       <label>Username</label>
       <input type="text" name="username" value="" maxlength="8"
@@ -28,7 +28,7 @@
       <input type="password" name="accountPassword" value="" minlength="4"
         maxlength="16" placeholder="between 4-16 characters" class="account-password" />
     </div>
-    <button class="sign-up" disabled>Sign up</button>
+    <button class="rename" disabled>Rename</button>
     <p>
       <div>* Cannot contain these characters: <, >, &, ', " and /</div>
     </p>
@@ -37,13 +37,13 @@
 <script>
   const username = document.querySelector(".username");
   const accountPassword = document.querySelector(".account-password");
-  const signUp = document.querySelector(".sign-up");
+  const rename = document.querySelector(".rename");
 
   checkInputValue = () => {
     if (username.value && accountPassword.value.length > 3) {
-      signUp.disabled = false;
+      rename.disabled = false;
     } else {
-      signUp.disabled = true;
+      rename.disabled = true;
     }
   };
 

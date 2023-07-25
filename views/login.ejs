@@ -40,11 +40,11 @@
   const logIn = document.querySelector(".log-in");
 
   const checkInputValue = () => {
-    if (username.value && (accountPassword.value.length > 3)) {
+    if (username.value && accountPassword.value.length > 3) {
       logIn.disabled = false;
-      return;
+    } else {
+      logIn.disabled = true;
     }
-    logIn.disabled = true;
   };
 
   username.addEventListener("input", () => checkInputValue());

@@ -66,7 +66,8 @@ app.get('/signup', (req, res) => {
   res.render('signup.ejs', { errorMessages: [] });
 });
 
-app.post('/signup', accountValidator,
+app.post('/signup',
+  accountValidator,
   (req, res, next) => {
     // バリデーション
     const errors = validationResult(req);
@@ -101,25 +102,69 @@ app.get('/login', (req, res) => {
   res.render('login.ejs', { errorMessages: [] });
 });
 
-app.post('/login', accountValidator, (req, res) => {
-  (async () => {
-    const results = await con.authenticateUser(con.connection, req, bcrypt);
-    req.session.userId = results[0].id;
-    req.session.username = results[0].username;
-    res.redirect('/');
-  })().catch(() => {
-    console.log('---failed authenticateUser---');
-    res.render('login.ejs', {
-      errorMessages: ['Either the username or password is incorrect']
+app.post('/login',
+  accountValidator, 
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.redirect('/');
+      console.log(errors.array());
+      return;
+    }
+    next();
+  },
+  (req, res) => {
+    (async () => {
+      const results = await con.authenticateUser(con.connection, req, bcrypt);
+      req.session.userId = results[0].id;
+      req.session.username = results[0].username;
+      res.redirect('/');
+    })().catch(() => {
+      console.log('---failed authenticateUser---');
+      res.render('login.ejs', {
+        errorMessages: ['Either the username or password is incorrect']
+      });
     });
-  });
-});
+  }
+);
 
 app.get('/logout', (req, res) => {
   req.session.destroy((error) => {
     res.redirect('/');
   });
 });
+
+app.get('/rename', (req, res) => {
+  res.render('rename.ejs', { errorMessages: [] });
+});
+
+app.post('/rename',
+  accountValidator,
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.redirect('/');
+      console.log(errors.array());
+      return;
+    }
+    next();
+  },
+  (req, res) => {
+    (async () => {
+      await con.beginTransaction(con.connection);
+      await con.renameOrResetPassword(con.connection, req, bcrypt);
+      req.session.username = req.body.username;
+      res.redirect('/');
+      con.commit(con.connection);
+    })().catch(error => {
+      console.log('---failed renameOrResetPassword & rollback---');
+      con.connection.rollback();
+      res.render('rename.ejs', {
+        errorMessages: ['The username is already taken']
+      });
+    });
+  }
+);
 
 app.get('/record', (req, res) => {
   if (!req.session.userId) {
@@ -182,28 +227,19 @@ io.on('connection', (socket) => {
   // プレイヤーが部屋に入室した直後
   socket.on('join-room', (playerInfo) => {
     const room = Room.rooms[playerInfo[0]];
-    // playerインスタンスを生成
     const player = new Player(playerInfo[1]);
-    // プレイヤーIDをセットし、部屋のプレイヤーリストに登録
     player.id = socket.id;
     room.players.push(player);
-
     if (socket.request.session.userId) {
       player.sessionUserId = socket.request.session.userId;
       console.log(`player.sessionUserId: ${player.sessionUserId}`);
     }
-
-    // 入室したユーザの情報を表示
     console.log(
       `Player join room: ${playerInfo[0] + 1},`,
       `player.id: ${player.id}, player.nickname: ${player.nickname}`
     );
-
-    // 現在の部屋状況を入室者全員に伝える
     let msg = 'Ready for battle!';
-    if (room.players.length === 1) {
-      msg = 'Waiting for other players to join...';
-    }
+    if (room.players.length === 1) msg = 'Waiting for other players to join...';
     // player.idを使ってmsgを送る
     room.players.map(player => io.to(player.id).emit('room-status', msg));
   });
@@ -213,13 +249,11 @@ io.on('connection', (socket) => {
     const player = room.getPlayer(socket.id);
     player.hand = playerInfo[0];
     console.log(`Player ${player.nickname} selected ${player.hand}`);
-
     // 部屋に一人しかいなければ何もしない
     // このreturnはplayer-selectイベントを抜ける
     if (room.players.length === 1) return;
-    
-    // 部屋の全員が手を選んでいなければ未選択のプレイヤー一覧を送信
-    // 入室人数が3人なら手が3つ選択されるまで待機
+    // 部屋の全員が手を選んでいなければ未選択のプレイヤー名を送信
+    // 例: 入室人数が3人なら手が3つ選択されるまで待機
     if (!room.checkAllSelect()) {
       const undecidedPlayers = room.players.map(tmpPlayer => {
         return !tmpPlayer.hand && tmpPlayer.nickname;
@@ -231,7 +265,6 @@ io.on('connection', (socket) => {
       // このreturnはplayer-selectイベントを抜ける
       return;
     }
-
     (async () => {
       // 試合結果をクライアントへ送信
       room.players.forEach(tmpPlayer => {
@@ -243,7 +276,6 @@ io.on('connection', (socket) => {
         io.to(tmpPlayer.id).emit('room-status', 'Battle finished!');
         io.to(tmpPlayer.id).emit('matchFinish', resultToPlayers);
       });
-
       // 試合結果をmatchesテーブルへINSERT
       try {
         await con.beginTransaction(con.connection);
@@ -258,23 +290,19 @@ io.on('connection', (socket) => {
           ]);
         });
         await con.insertMatchResults(con.connection, matchResults);
-        await con.commit(con.connection);
+        con.commit(con.connection);
       } catch (error) {
-        await con.rollback(con.connection, error);
+        con.rollback(con.connection, error);
       } finally {
         room.players.map(tmpPlayer => tmpPlayer.hand = '');
       }
     })().catch(error => console.log(error));
   });
-  
+
   socket.on('next-game', (roomId) => {
     const room = Room.rooms[roomId];
-    // 現在の部屋状況を入室者全員に伝える
     let msg = 'Ready for battle!';
-    // playerインスタンスが1つなら待機メッセージ
-    if (room.players.length === 1) {
-      msg = 'Waiting for other players to join...';
-    }
+    if (room.players.length === 1) msg = 'Waiting for other players to join...';
     // 指定はなくても動作するがplayer.idで対象を絞っている
     room.players.map(player => io.to(player.id).emit('room-status', msg));
   });
@@ -285,14 +313,11 @@ io.on('connection', (socket) => {
     const room = Room.getRoomContainsPlayer(socket.id);
     room.exitPlayer(socket.id);
     // playerがいないならパスワードを削除
-    if (room.players.length === 0) {
-      room.password = '';
-    }
+    if (!room.players.length) room.password = '';
   });
 });
 
 const PORT = 3000;
-
 server.listen(PORT, () => {
   console.log(`PORT: ${PORT}`);
 });

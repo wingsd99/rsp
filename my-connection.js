@@ -67,13 +67,27 @@ exports.authenticateUser = (connection, req, bcrypt) => {
       [req.body.username],
       (error, results) => {
         if (!results.length) return reject();
-        const pass = req.body.accountPassword;
-        const hash = results[0].password;
-        bcrypt.compare(pass, hash, (error, isEqual) => {
-          isEqual ? resolve(results) : reject();
-        });
+        bcrypt.compare(
+          req.body.accountPassword,
+          results[0].password,
+          // (error, isEqual) => isEqual ? resolve(results) : reject()
+          (error, isEqual) => isEqual ? resolve(results) : reject(error, results)
+        );
       }
     );
+  });
+};
+
+
+exports.renameOrResetPassword = (connection, req, bcrypt) => {
+  return new Promise((resolve, reject) => {
+    bcrypt.hash(req.body.accountPassword, 10, (error, hash) => {
+      connection.query(
+        'UPDATE users SET username = ?, password = ? WHERE id = ?',
+        [req.body.username, hash, req.session.userId],
+        (error, results) => error ? reject(error) : resolve()
+      );
+    });
   });
 };
 
