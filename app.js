@@ -25,32 +25,6 @@ Room.rooms = Room.rooms.map(room => room = new Room());
 console.log(`Room.rooms: ${JSON.stringify(Room.rooms)}`);
 
 app.get('/', async (req, res) => {
-  // 開発用にこの部分を残しておく
-  // const matchResults = [
-  //   [1, 'q', 'Rock', 'WIN'], 
-  //   [1, 'w', 'Scissors', 'LOSE']
-  // ];
-  // console.log('---...matchResults---\n', ...matchResults);
-  // const placeHolder = matchResults.map((_result, index) => {
-  //   return `((SELECT max_match_id + 1 FROM (SELECT MAX(match_id) AS max_match_id FROM matches) AS tmp_table) - ${index}, ?)`;
-  // }).join(',');
-  // console.log('---placeHolder---\n', placeHolder);
-
-  // (async () => {
-  //   const matchResults = [
-  //     [1, 'testA', 'Rock', 'WIN'],
-  //     [1, 'testB', 'Scissors', 'LOSE']
-  //   ];
-  //   const aaa = await con.insertResult(con.connection, matchResults);
-  //   console.log(aaa);
-  // })().catch((error) => console.log(error));
-
-  // const bbb = ['xxx', 'yyy'];
-  // const aaa = bbb.map((elm, index) => {
-  //   return index;
-  // });
-  // console.log('---aaa---\n', aaa);
-
   // 部屋に入室している人数とPWの有無を表示
   // roomInfoの初期値は[[0, 'No'], [0, 'No'], [0, 'No']]
   // disconnectよりも先にroomInfoが返されるため、退出した本人がカウントされる
