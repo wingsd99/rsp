@@ -27,7 +27,7 @@ console.log(`Room.rooms: ${JSON.stringify(Room.rooms)}`);
 app.get('/', async (req, res) => {
   // 開発用にこの部分を残しておく
   // const matchResults = [
-  //   [1, 'q', 'Rock', 'WIN'],
+  //   [1, 'q', 'Rock', 'WIN'], 
   //   [1, 'w', 'Scissors', 'LOSE']
   // ];
   // console.log('---...matchResults---\n', ...matchResults);
